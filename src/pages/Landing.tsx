@@ -1,7 +1,20 @@
 import { Link } from 'react-router-dom';
-import { Car, Calendar, Wrench, TrendingUp, CheckCircle, ArrowRight } from 'lucide-react';
+import {
+  Calendar,
+  Wrench,
+  TrendingUp,
+  CheckCircle,
+  ArrowRight,
+} from 'lucide-react';
+import logo from '@/assets/logo.png';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 
 export default function Landing() {
   const features = [
@@ -13,12 +26,14 @@ export default function Landing() {
     {
       icon: Wrench,
       title: 'Custom Modifications',
-      description: 'Track your vehicle modification projects from start to finish',
+      description:
+        'Track your vehicle modification projects from start to finish',
     },
     {
       icon: TrendingUp,
       title: 'Real-time Updates',
-      description: 'Get instant notifications on service progress and completion',
+      description:
+        'Get instant notifications on service progress and completion',
     },
     {
       icon: CheckCircle,
@@ -42,9 +57,13 @@ export default function Landing() {
       <header className="border-b">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
           <Link to="/" className="flex items-center space-x-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl gradient-hero shadow-glow">
-              <Car className="h-6 w-6 text-white" />
-            </div>
+            <span className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full shadow-glow">
+              <img
+                src={logo}
+                alt="Autonova logo"
+                className="h-full w-full object-cover scale-[1.2]"
+              />
+            </span>
             <span className="text-2xl font-bold">Autonova</span>
           </Link>
           <div className="flex items-center gap-4">
@@ -63,10 +82,13 @@ export default function Landing() {
         <div className="mx-auto max-w-3xl space-y-6">
           <h1 className="text-5xl font-bold leading-tight lg:text-6xl">
             Your Complete Auto Service
-            <span className="block gradient-primary bg-clip-text text-transparent">Management Solution</span>
+            <span className="block gradient-primary bg-clip-text text-transparent">
+              Management Solution
+            </span>
           </h1>
           <p className="text-xl text-muted-foreground">
-            Schedule appointments, track modifications, and manage your vehicle services all in one place
+            Schedule appointments, track modifications, and manage your vehicle
+            services all in one place
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
             <Button size="lg" variant="hero" asChild>
@@ -86,11 +108,16 @@ export default function Landing() {
       <section className="container mx-auto px-4 py-20">
         <div className="text-center mb-12">
           <h2 className="text-3xl font-bold mb-4">Why Choose Autonova?</h2>
-          <p className="text-muted-foreground text-lg">Everything you need to manage your auto services efficiently</p>
+          <p className="text-muted-foreground text-lg">
+            Everything you need to manage your auto services efficiently
+          </p>
         </div>
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
           {features.map((feature) => (
-            <Card key={feature.title} className="hover:shadow-lg transition-smooth">
+            <Card
+              key={feature.title}
+              className="hover:shadow-lg transition-smooth"
+            >
               <CardHeader>
                 <div className="p-3 rounded-lg bg-primary/10 w-fit mb-2">
                   <feature.icon className="h-6 w-6 text-primary" />
@@ -108,10 +135,13 @@ export default function Landing() {
         <div className="container mx-auto px-4">
           <div className="grid gap-12 lg:grid-cols-2 items-center">
             <div>
-              <h2 className="text-3xl font-bold mb-6">Built for Modern Auto Services</h2>
+              <h2 className="text-3xl font-bold mb-6">
+                Built for Modern Auto Services
+              </h2>
               <p className="text-muted-foreground text-lg mb-6">
-                Autonova streamlines your entire auto service experience with powerful features designed for customers,
-                employees, and administrators.
+                Autonova streamlines your entire auto service experience with
+                powerful features designed for customers, employees, and
+                administrators.
               </p>
               <div className="grid gap-3">
                 {benefits.map((benefit) => (
@@ -128,7 +158,9 @@ export default function Landing() {
               <Card className="shadow-glow">
                 <CardHeader>
                   <CardTitle>Ready to get started?</CardTitle>
-                  <CardDescription>Join hundreds of satisfied customers today</CardDescription>
+                  <CardDescription>
+                    Join hundreds of satisfied customers today
+                  </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <Button className="w-full" size="lg" variant="hero" asChild>
@@ -136,7 +168,10 @@ export default function Landing() {
                   </Button>
                   <p className="text-sm text-center text-muted-foreground">
                     Already have an account?{' '}
-                    <Link to="/login" className="text-primary hover:underline font-medium">
+                    <Link
+                      to="/login"
+                      className="text-primary hover:underline font-medium"
+                    >
                       Sign in here
                     </Link>
                   </p>
@@ -150,7 +185,9 @@ export default function Landing() {
       {/* Footer */}
       <footer className="border-t py-8">
         <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
-          <p>&copy; {new Date().getFullYear()} Autonova. All rights reserved.</p>
+          <p>
+            &copy; {new Date().getFullYear()} Autonova. All rights reserved.
+          </p>
         </div>
       </footer>
     </div>
