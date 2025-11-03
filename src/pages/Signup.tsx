@@ -66,11 +66,25 @@ export default function Signup() {
   const onSubmit = async (data: SignupFormData) => {
     setLoading(true);
     try {
-      await signup(data);
+      // Map role from form value to backend expected value
+      const roleMap: Record<string, 'CUSTOMER' | 'EMPLOYEE' | 'ADMIN'> = {
+        'Customer': 'CUSTOMER',
+        'Employee': 'EMPLOYEE',
+        'Admin': 'ADMIN'
+      };
+      
+      await signup({
+        userName: data.userName,
+        email: data.email,
+        password: data.password,
+        contactNumber: data.contactNumber,
+        role: roleMap[data.role]
+      });
+      
       toast.success('Account created successfully! Please login.');
       navigate('/login');
     } catch (error: any) {
-      toast.error(error?.response?.data?.message || 'Signup failed');
+      toast.error(error.message || 'Signup failed');
     } finally {
       setLoading(false);
     }
