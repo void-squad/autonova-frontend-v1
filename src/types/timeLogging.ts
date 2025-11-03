@@ -91,4 +91,6 @@ export interface TimeLogStats {
   weekHours: number;
   monthHours: number;
   totalEarnings: number;
+  activeProjects: number;
+  pendingTasks: number;
 }
