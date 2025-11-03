@@ -94,3 +94,12 @@ export interface TimeLogStats {
   activeProjects: number;
   pendingTasks: number;
 }
+
+// Active timer data for tracking currently running timer
+export interface ActiveTimerData {
+  taskId: string;
+  taskName: string;
+  projectId: string;
+  projectTitle: string;
+  startedAt: string; // ISO 8601 format
+}
