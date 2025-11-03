@@ -103,3 +103,34 @@ export interface ActiveTimerData {
   projectTitle: string;
   startedAt: string; // ISO 8601 format
 }
+
+// Vehicle information for project display
+export interface Vehicle {
+  id: string;
+  make: string;
+  model: string;
+  licensePlate: string;
+}
+
+// Project task for project task list
+export interface ProjectTask {
+  id: string;
+  taskName: string;
+  description?: string;
+  status: "TODO" | "IN_PROGRESS" | "COMPLETED" | "BLOCKED";
+  priority: "LOW" | "MEDIUM" | "HIGH";
+  estimatedHours?: number;
+  actualHours: number;
+}
+
+// Project with nested tasks and vehicle info
+export interface Project {
+  id: string;
+  title: string;
+  description?: string;
+  status: "PENDING" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
+  priority: "LOW" | "MEDIUM" | "HIGH";
+  startDate: string;
+  vehicle?: Vehicle;
+  tasks?: ProjectTask[];
+}
