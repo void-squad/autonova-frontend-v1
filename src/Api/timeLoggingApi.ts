@@ -6,6 +6,7 @@ import {
   TaskResponse,
   TimeLogFormData,
   EmployeeSummaryResponse,
+  WeeklySummaryData,
 } from "../types/timeLogging";
 
 const API_BASE_URL = "http://localhost:8083/api";
@@ -170,6 +171,50 @@ export const timeLoggingApi = {
     const employeeId = getEmployeeId();
     const response = await axios.get<TimeLogResponse[]>(
       `${API_BASE_URL}/time-logs/employee/${employeeId}/project/${projectId}`
+    );
+    return response.data;
+  },
+
+  // Get weekly summary data for analytics
+  getWeeklySummary: async (): Promise<WeeklySummaryData> => {
+    const employeeId = getEmployeeId();
+    const response = await axios.get<WeeklySummaryData>(
+      `${API_BASE_URL}/time-logs/employee/${employeeId}/weekly-summary`
+    );
+    return response.data;
+  },
+
+  // Get smart suggestions for next tasks
+  getSmartSuggestions: async (): Promise<
+    {
+      task: TaskResponse;
+      projectTitle: string;
+      reason: string;
+      urgency: "high" | "medium" | "low";
+      icon: "deadline" | "progress" | "efficiency" | "priority";
+    }[]
+  > => {
+    const employeeId = getEmployeeId();
+    const response = await axios.get(
+      `${API_BASE_URL}/time-logs/employee/${employeeId}/smart-suggestions`
+    );
+    return response.data;
+  },
+
+  // Get efficiency metrics and productivity data
+  getEfficiencyMetrics: async (): Promise<{
+    efficiency: number;
+    weeklyTrend?: number;
+    tips?: string[];
+    breakdown?: {
+      onTime: number;
+      overEstimate: number;
+      avgTaskTime: number;
+    };
+  }> => {
+    const employeeId = getEmployeeId();
+    const response = await axios.get(
+      `${API_BASE_URL}/time-logs/employee/${employeeId}/efficiency-metrics`
     );
     return response.data;
   },
