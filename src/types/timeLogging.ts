@@ -53,21 +53,6 @@ export interface TaskResponse {
   dueDate?: string; // ISO 8601 date format
 }
 
-// Task response from backend
-export interface TaskResponse {
-  id: string;
-  projectId: string;
-  taskName: string;
-  description?: string;
-  assignedEmployeeId?: string;
-  assignedEmployeeName?: string;
-  estimatedHours?: number;
-  actualHours: number;
-  status: "TODO" | "IN_PROGRESS" | "COMPLETED" | "BLOCKED";
-  priority: "LOW" | "MEDIUM" | "HIGH";
-  dueDate?: string; // ISO 8601 date format
-}
-
 // Employee summary response from backend
 export interface EmployeeSummaryResponse {
   employeeId: string;
@@ -115,12 +100,14 @@ export interface Vehicle {
 // Project task for project task list
 export interface ProjectTask {
   id: string;
+  projectId: string;
   taskName: string;
   description?: string;
   status: "TODO" | "IN_PROGRESS" | "COMPLETED" | "BLOCKED";
   priority: "LOW" | "MEDIUM" | "HIGH";
   estimatedHours?: number;
   actualHours: number;
+  dueDate?: string; // ISO 8601 date format
 }
 
 // Project with nested tasks and vehicle info
@@ -152,4 +139,18 @@ export interface FilterOptions {
   projectId: string;
   taskId: string;
   status: string;
+}
+
+// Weekly summary data for analytics
+export interface WeeklySummaryData {
+  dailyHours: {
+    day: string;
+    hours: number;
+  }[];
+  projectBreakdown: {
+    projectId: string;
+    projectTitle: string;
+    taskCount: number;
+    totalHours: number;
+  }[];
 }
