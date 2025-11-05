@@ -7,9 +7,25 @@ import {
   TimeLogFormData,
   EmployeeSummaryResponse,
   WeeklySummaryData,
+  TimeLog,
+  Project,
 } from "../types/timeLogging";
 
 const API_BASE_URL = "http://localhost:8083/api";
+
+// Helper function to map TimeLogResponse to TimeLog
+const mapToTimeLog = (response: TimeLogResponse): TimeLog => ({
+  id: response.id,
+  projectId: response.projectId,
+  projectTitle: response.projectTitle,
+  taskId: response.taskId,
+  taskName: response.taskName,
+  employeeId: response.employeeId,
+  employeeName: response.employeeName,
+  hours: response.hours,
+  note: response.note,
+  loggedAt: response.loggedAt,
+});
 
 // Get employee ID from auth context or localStorage
 const getEmployeeId = (): string => {
@@ -19,12 +35,12 @@ const getEmployeeId = (): string => {
 
 export const timeLoggingApi = {
   // Get all time logs for logged-in employee
-  getMyTimeLogs: async (): Promise<TimeLogResponse[]> => {
+  getMyTimeLogs: async (): Promise<TimeLog[]> => {
     const employeeId = getEmployeeId();
     const response = await axios.get<TimeLogResponse[]>(
       `${API_BASE_URL}/time-logs/employee/${employeeId}`
     );
-    return response.data;
+    return response.data.map(mapToTimeLog);
   },
 
   // Get time logs for a specific project
@@ -52,28 +68,166 @@ export const timeLoggingApi = {
   },
 
   // Get projects assigned to logged-in employee
-  getAssignedProjects: async (): Promise<ProjectResponse[]> => {
+  getAssignedProjects: async (): Promise<Project[]> => {
     const employeeId = getEmployeeId();
     const response = await axios.get<ProjectResponse[]>(
       `${API_BASE_URL}/projects/employee/${employeeId}`
     );
-    return response.data;
+
+    // Fetch tasks for each project and merge
+    const projectsWithTasks = await Promise.all(
+      response.data.map(async (project) => {
+        try {
+          const tasksResponse = await axios.get<TaskResponse[]>(
+            `${API_BASE_URL}/tasks/project/${project.id}`
+          );
+
+          return {
+            id: project.id,
+            title: project.title,
+            description: project.description,
+            status: project.status,
+            priority: project.priority,
+            startDate: project.startDate,
+            vehicle: project.vehicleInfo
+              ? {
+                  id: project.vehicleId,
+                  make: project.vehicleInfo.split(" ")[1] || "",
+                  model: project.vehicleInfo.split(" ")[2] || "",
+                  licensePlate: "",
+                }
+              : undefined,
+            tasks: tasksResponse.data.map((task) => ({
+              id: task.id,
+              projectId: task.projectId,
+              taskName: task.taskName,
+              description: task.description,
+              status: task.status,
+              priority: task.priority,
+              estimatedHours: task.estimatedHours,
+              actualHours: task.actualHours,
+              dueDate: task.dueDate,
+            })),
+          } as Project;
+        } catch (error) {
+          console.error(
+            `Failed to fetch tasks for project ${project.id}:`,
+            error
+          );
+          // Return project without tasks if fetch fails
+          return {
+            id: project.id,
+            title: project.title,
+            description: project.description,
+            status: project.status,
+            priority: project.priority,
+            startDate: project.startDate,
+            tasks: [],
+          } as Project;
+        }
+      })
+    );
+
+    return projectsWithTasks;
   },
 
   // Get all active projects
-  getActiveProjects: async (): Promise<ProjectResponse[]> => {
+  getActiveProjects: async (): Promise<Project[]> => {
     const response = await axios.get<ProjectResponse[]>(
       `${API_BASE_URL}/projects/active`
     );
-    return response.data;
+
+    // Fetch tasks for each project and merge
+    const projectsWithTasks = await Promise.all(
+      response.data.map(async (project) => {
+        try {
+          const tasksResponse = await axios.get<TaskResponse[]>(
+            `${API_BASE_URL}/tasks/project/${project.id}`
+          );
+
+          return {
+            id: project.id,
+            title: project.title,
+            description: project.description,
+            status: project.status,
+            priority: project.priority,
+            startDate: project.startDate,
+            tasks: tasksResponse.data.map((task) => ({
+              id: task.id,
+              projectId: task.projectId,
+              taskName: task.taskName,
+              description: task.description,
+              status: task.status,
+              priority: task.priority,
+              estimatedHours: task.estimatedHours,
+              actualHours: task.actualHours,
+              dueDate: task.dueDate,
+            })),
+          } as Project;
+        } catch (error) {
+          console.error(
+            `Failed to fetch tasks for project ${project.id}:`,
+            error
+          );
+          return {
+            id: project.id,
+            title: project.title,
+            description: project.description,
+            status: project.status,
+            priority: project.priority,
+            startDate: project.startDate,
+            tasks: [],
+          } as Project;
+        }
+      })
+    );
+
+    return projectsWithTasks;
   },
 
   // Get specific project by ID
-  getProjectById: async (projectId: string): Promise<ProjectResponse> => {
+  getProjectById: async (projectId: string): Promise<Project> => {
     const response = await axios.get<ProjectResponse>(
       `${API_BASE_URL}/projects/${projectId}`
     );
-    return response.data;
+
+    // Fetch tasks for the project
+    try {
+      const tasksResponse = await axios.get<TaskResponse[]>(
+        `${API_BASE_URL}/tasks/project/${projectId}`
+      );
+
+      return {
+        id: response.data.id,
+        title: response.data.title,
+        description: response.data.description,
+        status: response.data.status,
+        priority: response.data.priority,
+        startDate: response.data.startDate,
+        tasks: tasksResponse.data.map((task) => ({
+          id: task.id,
+          projectId: task.projectId,
+          taskName: task.taskName,
+          description: task.description,
+          status: task.status,
+          priority: task.priority,
+          estimatedHours: task.estimatedHours,
+          actualHours: task.actualHours,
+          dueDate: task.dueDate,
+        })),
+      } as Project;
+    } catch (error) {
+      console.error(`Failed to fetch tasks for project ${projectId}:`, error);
+      return {
+        id: response.data.id,
+        title: response.data.title,
+        description: response.data.description,
+        status: response.data.status,
+        priority: response.data.priority,
+        startDate: response.data.startDate,
+        tasks: [],
+      } as Project;
+    }
   },
 
   // Get tasks for a specific project
