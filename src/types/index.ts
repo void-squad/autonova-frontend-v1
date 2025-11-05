@@ -20,18 +20,7 @@ export type Vehicle = {
   licensePlate: string;
 };
 
-export type AppointmentStatus = 'booked' | 'pending' | 'in_progress' | 'completed' | 'canceled';
-
-export type Appointment = {
-  id: string;
-  customerId: string;
-  vehicleId: string;
-  serviceType: string;
-  start: string;
-  end: string;
-  status: AppointmentStatus;
-  notes?: string;
-};
+export * from './appointment';
 
 export type ProjectStatus = 'planned' | 'in_progress' | 'blocked' | 'completed' | 'canceled';
 

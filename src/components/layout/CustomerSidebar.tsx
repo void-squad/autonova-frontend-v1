@@ -14,7 +14,8 @@ import { cn } from '@/lib/utils';
 const navigation = [
   { name: 'Dashboard', href: '/customer/dashboard', icon: LayoutDashboard },
   { name: 'My Vehicles', href: '/customer/vehicles', icon: Car },
-  { name: 'Appointments', href: '/customer/appointments', icon: Calendar },
+  { name: 'Book Appointment', href: '/customer/book-appointment', icon: Calendar },
+  { name: 'My Appointments', href: '/customer/appointments', icon: Calendar },
   { name: 'Modifications', href: '/customer/modifications', icon: Wrench },
   { name: 'Service Progress', href: '/customer/progress', icon: TrendingUp },
   { name: 'Billing', href: '/customer/billing', icon: CreditCard },
