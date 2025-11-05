@@ -29,8 +29,10 @@ export const TimerStopModal = ({
   const [note, setNote] = useState("");
 
   const handleSubmit = () => {
+    // Call confirm handler and then request modal close immediately
     onConfirm(note);
     setNote(""); // Reset for next use
+    onCancel();
   };
 
   return (

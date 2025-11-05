@@ -549,6 +549,7 @@ export const TimeLoggingPage = () => {
           <SmartSuggestions
             suggestions={smartSuggestions}
             onStartTask={handleStartTimer}
+            activeTaskId={activeTimer?.taskId}
           />
         )}
 

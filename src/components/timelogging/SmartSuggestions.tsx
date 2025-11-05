@@ -25,11 +25,13 @@ interface SmartSuggestion {
 interface SmartSuggestionsProps {
   suggestions: SmartSuggestion[];
   onStartTask: (projectId: string, taskId: string) => void;
+  activeTaskId?: string | null;
 }
 
 export const SmartSuggestions = ({
   suggestions,
   onStartTask,
+  activeTaskId,
 }: SmartSuggestionsProps) => {
   if (suggestions.length === 0) {
     return null;
@@ -151,16 +153,23 @@ export const SmartSuggestions = ({
               </div>
 
               {/* Action Button */}
-              <Button
-                onClick={() =>
-                  onStartTask(suggestion.task.projectId, suggestion.task.id)
-                }
-                className="bg-indigo-600 hover:bg-indigo-700 gap-2 shrink-0"
-                size="sm"
-              >
-                <Play className="w-4 h-4" />
-                Start Now
-              </Button>
+              {activeTaskId === suggestion.task.id ? (
+                <Button disabled className="gap-2 shrink-0" size="sm">
+                  <Clock className="w-4 h-4" />
+                  Running
+                </Button>
+              ) : (
+                <Button
+                  onClick={() =>
+                    onStartTask(suggestion.task.projectId, suggestion.task.id)
+                  }
+                  className="bg-indigo-600 hover:bg-indigo-700 gap-2 shrink-0"
+                  size="sm"
+                >
+                  <Play className="w-4 h-4" />
+                  Start Now
+                </Button>
+              )}
             </div>
           </div>
         ))}

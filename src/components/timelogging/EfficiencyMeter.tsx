@@ -183,7 +183,9 @@ export const EfficiencyMeter = ({
           <span className="text-5xl font-bold text-gray-900">
             {efficiency}%
           </span>
-          <Badge className={`${level.color} bg-transparent border-2`}>
+          <Badge
+            className={`${level.color} ${level.bgColor} border-2 hover:opacity-95`}
+          >
             {level.label}
           </Badge>
         </div>
