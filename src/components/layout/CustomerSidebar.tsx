@@ -8,13 +8,19 @@ import {
   CreditCard,
   FileText,
   HelpCircle,
+  UserCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navigation = [
   { name: 'Dashboard', href: '/customer/dashboard', icon: LayoutDashboard },
+  { name: 'Profile', href: '/profile', icon: UserCircle },
   { name: 'My Vehicles', href: '/customer/vehicles', icon: Car },
-  { name: 'Book Appointment', href: '/customer/book-appointment', icon: Calendar },
+  {
+    name: 'Book Appointment',
+    href: '/customer/book-appointment',
+    icon: Calendar,
+  },
   { name: 'My Appointments', href: '/customer/appointments', icon: Calendar },
   { name: 'Modifications', href: '/customer/modifications', icon: Wrench },
   { name: 'Service Progress', href: '/customer/progress', icon: TrendingUp },
@@ -29,7 +35,9 @@ export default function CustomerSidebar() {
   return (
     <nav className="space-y-1">
       {navigation.map((item) => {
-        const isActive = location.pathname === item.href || location.pathname.startsWith(item.href + '/');
+        const isActive =
+          location.pathname === item.href ||
+          location.pathname.startsWith(item.href + '/');
         return (
           <Link
             key={item.name}

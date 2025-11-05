@@ -29,6 +29,7 @@ interface AuthContextType {
   signup: (data: SignupData) => Promise<MessageResponse>;
   logout: () => Promise<void>;
   isAuthenticated: boolean;
+  updateUser: (updates: Partial<AuthUser>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -91,6 +92,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUser(null);
   };
 
+  const updateUser = (updates: Partial<AuthUser>) => {
+    setUser((prev) => {
+      if (!prev) {
+        return prev;
+      }
+
+      const filteredUpdates = Object.fromEntries(
+        Object.entries(updates).filter(([, value]) => value !== undefined)
+      ) as Partial<AuthUser>;
+
+      if (Object.keys(filteredUpdates).length === 0) {
+        return prev;
+      }
+
+      const nextUser = { ...prev, ...filteredUpdates };
+      authService.storeUser(nextUser);
+      return nextUser;
+    });
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -100,6 +121,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         signup,
         logout,
         isAuthenticated: !!user,
+        updateUser,
       }}
     >
       {children}

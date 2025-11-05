@@ -1,34 +1,57 @@
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider } from "./contexts/AuthContext";
-import { RequireAuth } from "./components/auth/RequireAuth";
-import DashboardLayout from "./components/layout/DashboardLayout";
-import CustomerSidebar from "./components/layout/CustomerSidebar";
-import EmployeeSidebar from "./components/layout/EmployeeSidebar";
-import AdminSidebar from "./components/layout/AdminSidebar";
+import { Toaster } from '@/components/ui/toaster';
+import { Toaster as Sonner } from '@/components/ui/sonner';
+import { TooltipProvider } from '@/components/ui/tooltip';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider } from './contexts/AuthContext';
+import { RequireAuth } from './components/auth/RequireAuth';
+import DashboardLayout from './components/layout/DashboardLayout';
+import CustomerSidebar from './components/layout/CustomerSidebar';
+import EmployeeSidebar from './components/layout/EmployeeSidebar';
+import AdminSidebar from './components/layout/AdminSidebar';
 
 // Public pages
-import Landing from "./pages/Landing";
-import Login from "./pages/Login";
-import Signup from "./pages/Signup";
-import ForgotPassword from "./pages/ForgotPassword";
-import ResetPassword from "./pages/ResetPassword";
-import OAuth2Callback from "./pages/OAuth2Callback";
-import NotFound from "./pages/NotFound";
+import Landing from './pages/Landing';
+import Login from './pages/Login';
+import Signup from './pages/Signup';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
+import OAuth2Callback from './pages/OAuth2Callback';
+import NotFound from './pages/NotFound';
 
 // Customer pages
-import CustomerDashboard from "./pages/customer/CustomerDashboard";
-import BookAppointment from "./pages/customer/book-appointment";
-import MyAppointments from "./pages/customer/my-appointments";
+import CustomerDashboard from './pages/customer/CustomerDashboard';
+import BookAppointment from './pages/customer/book-appointment';
+import MyAppointments from './pages/customer/my-appointments';
+import Profile from './pages/Profile';
 
 // Employee pages
-import EmployeeDashboard from "./pages/employee/EmployeeDashboard";
+import EmployeeDashboard from './pages/employee/EmployeeDashboard';
 
 // Admin pages
-import AdminDashboard from "./pages/admin/AdminDashboard";
+import AdminDashboard from './pages/admin/AdminDashboard';
+import { useAuth } from './contexts/AuthContext';
+
+const ProfileRoute = () => {
+  const { user } = useAuth();
+  const role = user?.role?.toUpperCase();
+
+  let sidebar: React.ReactNode | null = null;
+
+  if (role === 'ADMIN') {
+    sidebar = <AdminSidebar />;
+  } else if (role === 'EMPLOYEE') {
+    sidebar = <EmployeeSidebar />;
+  } else {
+    sidebar = <CustomerSidebar />;
+  }
+
+  return (
+    <DashboardLayout sidebar={sidebar}>
+      <Profile />
+    </DashboardLayout>
+  );
+};
 
 const queryClient = new QueryClient();
 
@@ -48,8 +71,20 @@ const App = () => (
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/oauth2/callback" element={<OAuth2Callback />} />
 
+            <Route
+              path="/profile"
+              element={
+                <RequireAuth>
+                  <ProfileRoute />
+                </RequireAuth>
+              }
+            />
+
             {/* Test routes - Remove these in production */}
-            <Route path="/test/book-appointment" element={<BookAppointment />} />
+            <Route
+              path="/test/book-appointment"
+              element={<BookAppointment />}
+            />
             <Route path="/test/appointments" element={<MyAppointments />} />
 
             {/* Customer routes */}
@@ -61,7 +96,10 @@ const App = () => (
                 </RequireAuth>
               }
             >
-              <Route index element={<Navigate to="/customer/dashboard" replace />} />
+              <Route
+                index
+                element={<Navigate to="/customer/dashboard" replace />}
+              />
               <Route path="dashboard" element={<CustomerDashboard />} />
               <Route path="book-appointment" element={<BookAppointment />} />
               <Route path="appointments" element={<MyAppointments />} />
@@ -76,7 +114,10 @@ const App = () => (
                 </RequireAuth>
               }
             >
-              <Route index element={<Navigate to="/employee/dashboard" replace />} />
+              <Route
+                index
+                element={<Navigate to="/employee/dashboard" replace />}
+              />
               <Route path="dashboard" element={<EmployeeDashboard />} />
             </Route>
 
@@ -89,7 +130,10 @@ const App = () => (
                 </RequireAuth>
               }
             >
-              <Route index element={<Navigate to="/admin/dashboard" replace />} />
+              <Route
+                index
+                element={<Navigate to="/admin/dashboard" replace />}
+              />
               <Route path="dashboard" element={<AdminDashboard />} />
             </Route>
 
