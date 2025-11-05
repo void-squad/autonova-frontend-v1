@@ -139,6 +139,9 @@ export const ProjectTaskList = ({
                           >
                             {task.taskName}
                           </span>
+                          <Badge className={getPriorityColor(task.priority)}>
+                            {task.priority}
+                          </Badge>
                           {isActive && (
                             <Badge className="bg-blue-600 text-white animate-pulse">
                               Active
@@ -154,8 +157,8 @@ export const ProjectTaskList = ({
                     <div className="flex items-center gap-4">
                       <div className="text-right">
                         <p className="text-sm font-medium text-gray-900">
-                          {task.actualHours.toFixed(1)}h /{" "}
-                          {task.estimatedHours?.toFixed(1) || "?"}h
+                          {task.actualHours.toFixed(2)}h /{" "}
+                          {task.estimatedHours?.toFixed(2) || "?"}h
                         </p>
                         <p className="text-xs text-gray-500">
                           {progress.toFixed(0)}% complete

@@ -137,7 +137,7 @@ export const SmartSuggestions = ({
                 <div className="flex items-center gap-4 mt-3 text-xs text-gray-600">
                   <span className="flex items-center gap-1">
                     <Clock className="w-3 h-3" />
-                    {suggestion.task.estimatedHours?.toFixed(1) || "?"}h
+                    {suggestion.task.estimatedHours?.toFixed(2) || "?"}h
                     estimated
                   </span>
                   {suggestion.task.dueDate && (

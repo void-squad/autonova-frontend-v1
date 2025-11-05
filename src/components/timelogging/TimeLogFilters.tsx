@@ -29,11 +29,22 @@ export const TimeLogFilters = ({
     taskId: "all",
   });
 
+  const [appliedFilters, setAppliedFilters] = useState<FilterOptions>({
+    startDate: "",
+    endDate: "",
+    projectId: "all",
+    taskId: "all",
+  });
+
+  const hasPendingChanges =
+    JSON.stringify(filters) !== JSON.stringify(appliedFilters);
+
   const handleFilterChange = (key: keyof FilterOptions, value: string) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
   };
 
   const handleApplyFilters = () => {
+    setAppliedFilters({ ...filters });
     onFilterChange(filters);
   };
 
@@ -45,6 +56,7 @@ export const TimeLogFilters = ({
       taskId: "all",
     };
     setFilters(emptyFilters);
+    setAppliedFilters(emptyFilters);
     onFilterChange(emptyFilters);
   };
 
@@ -74,6 +86,9 @@ export const TimeLogFilters = ({
   };
 
   const selectedProject = projects.find((p) => p.id === filters.projectId);
+  const appliedProject = projects.find(
+    (p) => p.id === appliedFilters.projectId
+  );
 
   return (
     <Card className="p-6 mb-6">
@@ -114,13 +129,33 @@ export const TimeLogFilters = ({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Start Date */}
-        <div>
-          <Label htmlFor="startDate" className="flex items-center gap-1">
-            <Calendar className="w-3 h-3" />
+      {/* Labels row */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 items-center">
+        <div className="flex items-center gap-1">
+          <Calendar className="w-3 h-3" />
+          <Label htmlFor="startDate" className="m-0">
             Start Date
           </Label>
+        </div>
+        <div className="flex items-center gap-1">
+          <Calendar className="w-3 h-3" />
+          <Label htmlFor="endDate" className="m-0">
+            End Date
+          </Label>
+        </div>
+        <div className="flex items-center">
+          <Label htmlFor="projectFilter" className="m-0">
+            Project
+          </Label>
+        </div>
+        <div className="flex items-center">
+          <Label htmlFor="taskFilter" className="m-0">
+            Task
+          </Label>
+        </div>
+
+        {/* Inputs row */}
+        <div>
           <Input
             id="startDate"
             type="date"
@@ -129,13 +164,7 @@ export const TimeLogFilters = ({
             className="mt-1"
           />
         </div>
-
-        {/* End Date */}
         <div>
-          <Label htmlFor="endDate" className="flex items-center gap-1">
-            <Calendar className="w-3 h-3" />
-            End Date
-          </Label>
           <Input
             id="endDate"
             type="date"
@@ -144,10 +173,7 @@ export const TimeLogFilters = ({
             className="mt-1"
           />
         </div>
-
-        {/* Project Filter */}
         <div>
-          <Label htmlFor="projectFilter">Project</Label>
           <Select
             value={filters.projectId}
             onValueChange={(value) => handleFilterChange("projectId", value)}
@@ -165,14 +191,11 @@ export const TimeLogFilters = ({
             </SelectContent>
           </Select>
         </div>
-
-        {/* Task Filter (filtered by selected project) */}
         <div>
-          <Label htmlFor="taskFilter">Task</Label>
           <Select
             value={filters.taskId}
             onValueChange={(value) => handleFilterChange("taskId", value)}
-            disabled={!filters.projectId}
+            disabled={!filters.projectId || filters.projectId === "all"}
           >
             <SelectTrigger className="mt-1">
               <SelectValue placeholder="All tasks" />
@@ -190,51 +213,60 @@ export const TimeLogFilters = ({
       </div>
 
       {/* Action Buttons */}
-      <div className="flex justify-end gap-2 mt-4">
-        <Button
-          variant="outline"
-          onClick={handleClearFilters}
-          className="gap-2"
-        >
-          <X className="w-4 h-4" />
-          Clear All
-        </Button>
-        <Button onClick={handleApplyFilters} className="gap-2 bg-blue-600">
-          <Filter className="w-4 h-4" />
-          Apply Filters
-        </Button>
-      </div>
+      {(hasPendingChanges ||
+        appliedFilters.startDate ||
+        appliedFilters.endDate ||
+        (appliedFilters.projectId && appliedFilters.projectId !== "all") ||
+        (appliedFilters.taskId && appliedFilters.taskId !== "all")) && (
+        <div className="flex justify-end gap-2 mt-4">
+          <Button
+            variant="outline"
+            onClick={handleClearFilters}
+            className="gap-2"
+          >
+            <X className="w-4 h-4" />
+            Clear All
+          </Button>
+          {hasPendingChanges && (
+            <Button onClick={handleApplyFilters} className="gap-2 bg-blue-600">
+              <Filter className="w-4 h-4" />
+              Apply Filters
+            </Button>
+          )}
+        </div>
+      )}
 
       {/* Active Filters Display */}
-      {(filters.startDate ||
-        filters.endDate ||
-        (filters.projectId && filters.projectId !== "all") ||
-        (filters.taskId && filters.taskId !== "all")) && (
+      {(appliedFilters.startDate ||
+        appliedFilters.endDate ||
+        (appliedFilters.projectId && appliedFilters.projectId !== "all") ||
+        (appliedFilters.taskId && appliedFilters.taskId !== "all")) && (
         <div className="mt-4 pt-4 border-t">
           <p className="text-sm text-gray-600 mb-2">Active Filters:</p>
           <div className="flex flex-wrap gap-2">
-            {filters.startDate && (
+            {appliedFilters.startDate && (
               <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
-                From: {filters.startDate}
+                From: {appliedFilters.startDate}
               </span>
             )}
-            {filters.endDate && (
+            {appliedFilters.endDate && (
               <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
-                To: {filters.endDate}
+                To: {appliedFilters.endDate}
               </span>
             )}
-            {filters.projectId && filters.projectId !== "all" && (
+            {appliedFilters.projectId && appliedFilters.projectId !== "all" && (
               <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs">
                 Project:{" "}
-                {projects.find((p) => p.id === filters.projectId)?.title}
+                {projects.find((p) => p.id === appliedFilters.projectId)?.title}
               </span>
             )}
-            {filters.taskId && filters.taskId !== "all" && (
+            {appliedFilters.taskId && appliedFilters.taskId !== "all" && (
               <span className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-xs">
                 Task:{" "}
                 {
-                  selectedProject?.tasks?.find((t) => t.id === filters.taskId)
-                    ?.taskName
+                  appliedProject?.tasks?.find(
+                    (t) => t.id === appliedFilters.taskId
+                  )?.taskName
                 }
               </span>
             )}

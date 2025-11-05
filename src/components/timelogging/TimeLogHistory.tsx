@@ -45,7 +45,7 @@ export const TimeLogHistory = ({
           </h2>
         </div>
         <Badge className="bg-blue-100 text-blue-800 text-lg px-4 py-1">
-          Total: {totalHours.toFixed(1)} hrs
+          Total: {totalHours.toFixed(2)} hrs
         </Badge>
       </div>
 
@@ -76,7 +76,7 @@ export const TimeLogHistory = ({
                   <TableCell>{log.projectTitle}</TableCell>
                   <TableCell>{log.taskName}</TableCell>
                   <TableCell className="text-right font-semibold">
-                    {log.hours.toFixed(1)}
+                    {log.hours.toFixed(2)}
                   </TableCell>
                   <TableCell className="max-w-xs truncate">
                     {log.note || "-"}

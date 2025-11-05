@@ -47,7 +47,7 @@ export const WeeklySummary = ({ data }: WeeklySummaryProps) => {
                 </p>
               </div>
               <p className="text-xl font-bold text-blue-600">
-                {project.totalHours.toFixed(1)}h
+                {project.totalHours.toFixed(2)}h
               </p>
             </div>
           ))}

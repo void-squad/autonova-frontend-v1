@@ -215,7 +215,7 @@ export const EfficiencyMeter = ({
           </div>
           <div className="text-center">
             <p className="text-2xl font-bold text-gray-900">
-              {breakdown.avgTaskTime.toFixed(1)}h
+              {breakdown.avgTaskTime.toFixed(2)}h
             </p>
             <p className="text-xs text-gray-600">Avg Task Time</p>
           </div>

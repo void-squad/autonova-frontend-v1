@@ -10,14 +10,14 @@ export const TimeLogStats = ({ stats }: TimeLogStatsProps) => {
   const statCards = [
     {
       title: "Today's Hours",
-      value: stats.todayHours.toFixed(1),
+      value: stats.todayHours.toFixed(2),
       icon: Clock,
       color: "text-blue-600",
       bgColor: "bg-blue-50",
     },
     {
       title: "This Week",
-      value: stats.weekHours.toFixed(1),
+      value: stats.weekHours.toFixed(2),
       icon: CheckCircle2,
       color: "text-green-600",
       bgColor: "bg-green-50",
