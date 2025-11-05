@@ -21,6 +21,8 @@ import NotFound from "./pages/NotFound";
 
 // Customer pages
 import CustomerDashboard from "./pages/customer/CustomerDashboard";
+import BookAppointment from "./pages/customer/book-appointment";
+import MyAppointments from "./pages/customer/my-appointments";
 
 // Employee pages
 import EmployeeDashboard from "./pages/employee/EmployeeDashboard";
@@ -46,6 +48,10 @@ const App = () => (
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/oauth2/callback" element={<OAuth2Callback />} />
 
+            {/* Test routes - Remove these in production */}
+            <Route path="/test/book-appointment" element={<BookAppointment />} />
+            <Route path="/test/appointments" element={<MyAppointments />} />
+
             {/* Customer routes */}
             <Route
               path="/customer"
@@ -57,6 +63,8 @@ const App = () => (
             >
               <Route index element={<Navigate to="/customer/dashboard" replace />} />
               <Route path="dashboard" element={<CustomerDashboard />} />
+              <Route path="book-appointment" element={<BookAppointment />} />
+              <Route path="appointments" element={<MyAppointments />} />
             </Route>
 
             {/* Employee routes */}
