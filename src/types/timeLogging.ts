@@ -122,11 +122,15 @@ export interface Project {
   tasks?: ProjectTask[];
 }
 
-// Time log data for history display
+// Time log data for history display (mapped from TimeLogResponse)
 export interface TimeLog {
   id: string;
   projectId: string;
+  projectTitle: string;
   taskId: string;
+  taskName: string;
+  employeeId: string;
+  employeeName: string;
   hours: number;
   note?: string;
   loggedAt: string; // ISO 8601 format
