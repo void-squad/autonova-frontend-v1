@@ -73,8 +73,8 @@ export const TimeLogHistory = ({
                   <TableCell className="font-medium">
                     {formatDate(log.loggedAt)}
                   </TableCell>
-                  <TableCell>{log.projectId}</TableCell>
-                  <TableCell>{log.taskId}</TableCell>
+                  <TableCell>{log.projectTitle}</TableCell>
+                  <TableCell>{log.taskName}</TableCell>
                   <TableCell className="text-right font-semibold">
                     {log.hours.toFixed(1)}
                   </TableCell>
