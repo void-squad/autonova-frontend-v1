@@ -1,4 +1,5 @@
 import { Link, Outlet, useNavigate } from 'react-router-dom';
+import type { ReactNode } from 'react';
 import { Car, Bell, LogOut, User, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -15,11 +16,11 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useState } from 'react';
 
 interface DashboardLayoutProps {
-  children?: React.ReactNode;
-  sidebar: React.ReactNode;
+  children?: ReactNode;
+  sidebar: ReactNode;
 }
 
-export default function DashboardLayout({ sidebar }: DashboardLayoutProps) {
+export default function DashboardLayout({ sidebar, children }: DashboardLayoutProps) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -137,7 +138,7 @@ export default function DashboardLayout({ sidebar }: DashboardLayoutProps) {
 
         {/* Page Content */}
         <main className="flex-1 overflow-y-auto p-4 lg:p-6">
-          <Outlet />
+          {children ?? <Outlet />}
         </main>
       </div>
     </div>
