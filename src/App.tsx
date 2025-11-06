@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -9,6 +10,8 @@ import DashboardLayout from "./components/layout/DashboardLayout";
 import CustomerSidebar from "./components/layout/CustomerSidebar";
 import EmployeeSidebar from "./components/layout/EmployeeSidebar";
 import AdminSidebar from "./components/layout/AdminSidebar";
+import { ProjectsStoreProvider } from "./contexts/ProjectsStore";
+import { getEmployeeProjectRoutes } from "./pages/employee/projects";
 
 // Public pages
 import Landing from "./pages/Landing";
@@ -31,6 +34,7 @@ import EmployeeProjects from "./pages/employee/projects";
 import EmployeeTasks from "./pages/employee/tasks";
 import EmployeeTimeLogs from "./pages/employee/time-logs";
 import EmployeeReports from "./pages/employee/reports";
+import TimeLoggingPage from "./pages/employee/TimeLoggingPage";
 
 // Admin pages
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -39,40 +43,25 @@ import EmployeeDetail from "./pages/admin/employee-detail";
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            {/* Public routes */}
-            <Route path="/" element={<Landing />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Signup />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="/reset-password" element={<ResetPassword />} />
-            <Route path="/oauth2/callback" element={<OAuth2Callback />} />
+const App = () => {
+  const employeeProjectRoutes = useMemo(() => getEmployeeProjectRoutes(), []);
 
-            {/* Test routes - Remove these in production */}
-            <Route path="/test/book-appointment" element={<BookAppointment />} />
-            <Route path="/test/appointments" element={<MyAppointments />} />
-
-            {/* Customer routes */}
-            <Route
-              path="/customer"
-              element={
-                <RequireAuth roles={['Customer']}>
-                  <DashboardLayout sidebar={<CustomerSidebar />} />
-                </RequireAuth>
-              }
-            >
-              <Route index element={<Navigate to="/customer/dashboard" replace />} />
-              <Route path="dashboard" element={<CustomerDashboard />} />
-              <Route path="book-appointment" element={<BookAppointment />} />
-              <Route path="appointments" element={<MyAppointments />} />
-            </Route>
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <ProjectsStoreProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <Routes>
+                {/* Public routes */}
+                <Route path="/" element={<Landing />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/register" element={<Signup />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
+                <Route path="/oauth2/callback" element={<OAuth2Callback />} />
 
             {/* Employee routes */}
             <Route
@@ -85,35 +74,72 @@ const App = () => (
             >
               <Route index element={<Navigate to="/employee/dashboard" replace />} />
               <Route path="dashboard" element={<EmployeeDashboard />} />
+              <Route path="time-logging" element={<TimeLoggingPage />} />
+            </Route>
+                {/* Test routes - Remove these in production */}
+                <Route path="/test/book-appointment" element={<BookAppointment />} />
+                <Route path="/test/appointments" element={<MyAppointments />} />
+
+                {/* Customer routes */}
+                <Route
+                  path="/customer"
+                  element={
+                    <RequireAuth roles={['Customer']}>
+                      <DashboardLayout sidebar={<CustomerSidebar />} />
+                    </RequireAuth>
+                  }
+                >
+                  <Route index element={<Navigate to="/customer/dashboard" replace />} />
+                  <Route path="dashboard" element={<CustomerDashboard />} />
+                  <Route path="book-appointment" element={<BookAppointment />} />
+                  <Route path="appointments" element={<MyAppointments />} />
+                </Route>
+
+                {/* Employee routes */}
+                <Route
+                  path="/employee"
+                  element={
+                    <RequireAuth roles={['Employee']}>
+                      <DashboardLayout sidebar={<EmployeeSidebar />} />
+                    </RequireAuth>
+                  }
+                >
+                  <Route index element={<Navigate to="/employee/dashboard" replace />} />
+                  <Route path="dashboard" element={<EmployeeDashboard />} />
               <Route path="tasks" element={<EmployeeTasks />} />
               <Route path="services" element={<EmployeeServices />} />
               <Route path="projects" element={<EmployeeProjects />} />
               <Route path="time-logs" element={<EmployeeTimeLogs />} />
               <Route path="reports" element={<EmployeeReports />} />
-            </Route>
+                </Route>
+                {employeeProjectRoutes.map((route) => (
+                  <Route key={route.path} path={route.path} element={route.element} />
+                ))}
 
-            {/* Admin routes */}
-            <Route
-              path="/admin"
-              element={
-                <RequireAuth roles={['Admin']}>
-                  <DashboardLayout sidebar={<AdminSidebar />} />
-                </RequireAuth>
-              }
-            >
-              <Route index element={<Navigate to="/admin/dashboard" replace />} />
-              <Route path="dashboard" element={<AdminDashboard />} />
+                {/* Admin routes */}
+                <Route
+                  path="/admin"
+                  element={
+                    <RequireAuth roles={['Admin']}>
+                      <DashboardLayout sidebar={<AdminSidebar />} />
+                    </RequireAuth>
+                  }
+                >
+                  <Route index element={<Navigate to="/admin/dashboard" replace />} />
+                  <Route path="dashboard" element={<AdminDashboard />} />
               <Route path="employees" element={<AdminEmployees />} />
               <Route path="employees/:id" element={<EmployeeDetail />} />
-            </Route>
+                </Route>
 
-            {/* 404 */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
-    </AuthProvider>
+                {/* 404 */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </BrowserRouter>
+          </TooltipProvider>
+        </ProjectsStoreProvider>
+      </AuthProvider>
   </QueryClientProvider>
-);
+  );
+};
 
 export default App;

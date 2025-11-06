@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 const navigation = [
   { name: 'Dashboard', href: '/employee/dashboard', icon: LayoutDashboard },
   { name: 'My Tasks', href: '/employee/tasks', icon: ClipboardList },
-  { name: 'Time Logs', href: '/employee/time-logs', icon: Clock },
+  { name: 'Time Logs', href: '/employee/time-logging', icon: Clock },
   { name: 'Projects', href: '/employee/projects', icon: Wrench },
   { name: 'Reports', href: '/employee/reports', icon: FileText },
   { name: 'Help', href: '/help', icon: HelpCircle },
