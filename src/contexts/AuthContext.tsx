@@ -1,15 +1,32 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { User } from '@/types';
-import { authApi, LoginInput, SignupInput } from '@/lib/api/auth';
-import { getAccessToken } from '@/lib/api/client';
+import * as authService from '@/services/authService';
+
+interface User {
+  id: number;
+  email: string;
+  userName: string;
+  role: string;
+}
+
+interface LoginCredentials {
+  email: string;
+  password: string;
+}
+
+interface SignupData {
+  userName: string;
+  email: string;
+  password: string;
+  contactNumber: string;
+  role: 'CUSTOMER' | 'EMPLOYEE' | 'ADMIN';
+}
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: (credentials: LoginInput) => Promise<void>;
-  signup: (data: SignupInput) => Promise<void>;
+  login: (credentials: LoginCredentials) => Promise<void>;
+  signup: (data: SignupData) => Promise<void>;
   logout: () => Promise<void>;
-  loginWithGoogle: () => Promise<void>;
   isAuthenticated: boolean;
 }
 
@@ -22,13 +39,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     // Check if user is already authenticated
     const initAuth = async () => {
-      const token = getAccessToken();
+      const token = localStorage.getItem('accessToken');
       if (token) {
         try {
-          const currentUser = await authApi.getCurrentUser();
+          const currentUser = await authService.getUserInfo();
           setUser(currentUser);
         } catch (error) {
           console.error('Failed to get current user:', error);
+          // Clear invalid tokens
+          localStorage.clear();
         }
       }
       setLoading(false);
@@ -37,24 +56,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     initAuth();
   }, []);
 
-  const login = async (credentials: LoginInput) => {
-    const response = await authApi.login(credentials);
-    setUser(response.user);
+  const login = async (credentials: LoginCredentials) => {
+    const response = await authService.login(credentials.email, credentials.password);
+    setUser(response.userInfo);
   };
 
-  const signup = async (data: SignupInput) => {
-    const response = await authApi.signup(data);
-    setUser(response.user);
+  const signup = async (data: SignupData) => {
+    // Register the user
+    await authService.register({
+      userName: data.userName,
+      email: data.email,
+      password: data.password,
+      contactOne: data.contactNumber,
+      role: data.role
+    });
+    // Note: After registration, user needs to login separately
+    // The backend doesn't auto-login after registration
   };
 
   const logout = async () => {
-    await authApi.logout();
+    await authService.logout();
     setUser(null);
-  };
-
-  const loginWithGoogle = async () => {
-    const { url } = await authApi.getGoogleAuthUrl();
-    window.location.href = url;
   };
 
   return (
@@ -65,7 +87,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         login,
         signup,
         logout,
-        loginWithGoogle,
         isAuthenticated: !!user,
       }}
     >

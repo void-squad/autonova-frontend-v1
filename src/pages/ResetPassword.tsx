@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
+import * as authService from '@/services/authService';
 
 const resetPasswordSchema = z.object({
   password: z.string().min(6, 'Password must be at least 6 characters'),
@@ -22,7 +23,7 @@ type ResetPasswordFormData = z.infer<typeof resetPasswordSchema>;
 export default function ResetPassword() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const token = searchParams.get('token') || 'demo-token'; // Allow viewing without token for development
+  const token = searchParams.get('token');
   
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -45,11 +46,7 @@ export default function ResetPassword() {
 
     setLoading(true);
     try {
-      // TODO: Implement actual reset password API call
-      // await authApi.resetPassword({ token, password: data.password });
-      
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      await authService.resetPassword(token, data.password);
       
       setResetSuccess(true);
       toast.success('Password reset successfully');
@@ -59,7 +56,7 @@ export default function ResetPassword() {
         navigate('/login');
       }, 3000);
     } catch (error: any) {
-      toast.error(error?.response?.data?.message || 'Failed to reset password');
+      toast.error(error.message || 'Failed to reset password');
     } finally {
       setLoading(false);
     }

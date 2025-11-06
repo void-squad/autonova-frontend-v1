@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
+import * as authService from '@/services/authService';
 
 const forgotPasswordSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -30,16 +31,35 @@ export default function ForgotPassword() {
   const onSubmit = async (data: ForgotPasswordFormData) => {
     setLoading(true);
     try {
-      // TODO: Implement actual forgot password API call
-      // await authApi.forgotPassword(data);
+      const response = await authService.forgotPassword(data.email);
       
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      setEmailSent(true);
-      toast.success('Password reset link sent to your email');
+      // Check if request was successful before showing success state
+      if (response.success !== false) {
+        setEmailSent(true);
+        
+        // Show the message from backend response
+        if (response.message) {
+          toast.success(response.message);
+        } else {
+          toast.success('Password reset link sent to your email');
+        }
+        
+        console.log('✅ Forgot password response:', response);
+      } else {
+        // Backend returned success: false (validation error)
+        const errorMessage = response.message || 'Failed to send reset link. Please try again.';
+        toast.error(errorMessage);
+        console.log('⚠️ Validation error:', response);
+      }
     } catch (error: any) {
-      toast.error(error?.response?.data?.message || 'Failed to send reset link');
+      console.error('❌ Forgot password error:', error);
+      
+      // Show specific error message from backend if available
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to send reset link. Please try again.';
+      toast.error(errorMessage);
+      
+      // Keep form visible so user can correct the email
+      // Don't set emailSent to true
     } finally {
       setLoading(false);
     }
@@ -84,7 +104,7 @@ export default function ForgotPassword() {
               <h2 className="text-3xl font-bold text-foreground">Forgot Password?</h2>
               <p className="text-muted-foreground">
                 {emailSent 
-                  ? "Check your email for a link to reset your password."
+                  ? "Check your email for password reset instructions. If you don't see it, check your spam folder."
                   : "Enter the email address associated with your account and we'll send you a link to reset your password."}
               </p>
             </div>
@@ -134,10 +154,23 @@ export default function ForgotPassword() {
             </form>
           ) : (
             <div className="space-y-6 animate-in fade-in duration-500">
-              <div className="p-4 bg-primary/10 border border-primary/20 rounded-lg">
-                <p className="text-sm text-foreground text-center">
-                  If an account exists with this email, you will receive a password reset link shortly.
+              <div className="p-6 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg space-y-3">
+                <div className="flex items-center justify-center mb-3">
+                  <div className="h-12 w-12 rounded-full bg-green-100 dark:bg-green-900/40 flex items-center justify-center">
+                    <Mail className="h-6 w-6 text-green-600 dark:text-green-400" />
+                  </div>
+                </div>
+                <h3 className="text-lg font-semibold text-center text-foreground">
+                  Check Your Email
+                </h3>
+                <p className="text-sm text-muted-foreground text-center">
+                  If an account exists with this email, you will receive password reset instructions shortly.
                 </p>
+                <div className="pt-2 border-t border-green-200 dark:border-green-800">
+                  <p className="text-xs text-muted-foreground text-center">
+                    💡 <strong>Tip:</strong> Check your spam folder if you don't see the email in your inbox
+                  </p>
+                </div>
               </div>
               
               <Button
