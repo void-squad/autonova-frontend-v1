@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -11,7 +10,6 @@ import CustomerSidebar from "./components/layout/CustomerSidebar";
 import EmployeeSidebar from "./components/layout/EmployeeSidebar";
 import AdminSidebar from "./components/layout/AdminSidebar";
 import { ProjectsStoreProvider } from "./contexts/ProjectsStore";
-import { getEmployeeProjectRoutes } from "./pages/employee/projects";
 
 // Public pages
 import Landing from "./pages/Landing";
@@ -29,16 +27,20 @@ import MyAppointments from "./pages/customer/my-appointments";
 
 // Employee pages
 import EmployeeDashboard from "./pages/employee/EmployeeDashboard";
+import EmployeeServices from "./pages/employee/services";
+import EmployeeProjects from "./pages/employee/projects";
+import EmployeeTasks from "./pages/employee/tasks";
+import EmployeeReports from "./pages/employee/reports";
 import TimeLoggingPage from "./pages/employee/TimeLoggingPage";
 
 // Admin pages
 import AdminDashboard from "./pages/admin/AdminDashboard";
+import AdminEmployees from "./pages/admin/employees";
+import EmployeeDetail from "./pages/admin/employee-detail";
 
 const queryClient = new QueryClient();
 
 const App = () => {
-  const employeeProjectRoutes = useMemo(() => getEmployeeProjectRoutes(), []);
-
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
@@ -56,19 +58,6 @@ const App = () => {
                 <Route path="/reset-password" element={<ResetPassword />} />
                 <Route path="/oauth2/callback" element={<OAuth2Callback />} />
 
-            {/* Employee routes */}
-            <Route
-              path="/employee"
-              element={
-                <RequireAuth roles={['Employee']}>
-                  <DashboardLayout sidebar={<EmployeeSidebar />} />
-                </RequireAuth>
-              }
-            >
-              <Route index element={<Navigate to="/employee/dashboard" replace />} />
-              <Route path="dashboard" element={<EmployeeDashboard />} />
-              <Route path="time-logging" element={<TimeLoggingPage />} />
-            </Route>
                 {/* Test routes - Remove these in production */}
                 <Route path="/test/book-appointment" element={<BookAppointment />} />
                 <Route path="/test/appointments" element={<MyAppointments />} />
@@ -99,10 +88,12 @@ const App = () => {
                 >
                   <Route index element={<Navigate to="/employee/dashboard" replace />} />
                   <Route path="dashboard" element={<EmployeeDashboard />} />
+                  <Route path="time-logging" element={<TimeLoggingPage />} />
+                  <Route path="tasks" element={<EmployeeTasks />} />
+                  <Route path="services" element={<EmployeeServices />} />
+                  <Route path="projects" element={<EmployeeProjects />} />
+                  <Route path="reports" element={<EmployeeReports />} />
                 </Route>
-                {employeeProjectRoutes.map((route) => (
-                  <Route key={route.path} path={route.path} element={route.element} />
-                ))}
 
                 {/* Admin routes */}
                 <Route
@@ -115,6 +106,8 @@ const App = () => {
                 >
                   <Route index element={<Navigate to="/admin/dashboard" replace />} />
                   <Route path="dashboard" element={<AdminDashboard />} />
+              <Route path="employees" element={<AdminEmployees />} />
+              <Route path="employees/:id" element={<EmployeeDetail />} />
                 </Route>
 
                 {/* 404 */}

@@ -92,10 +92,12 @@ export const TimeLoggingPage = () => {
   useEffect(() => {
     initializePage();
     restoreTimerFromStorage();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     applyFiltersToTimeLogs();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timeLogs, appliedFilters]);
 
   const initializePage = async () => {
@@ -386,9 +388,10 @@ export const TimeLoggingPage = () => {
       await refreshAllData();
 
       toast.success(`Successfully logged ${hours.toFixed(2)} hours!`);
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error stopping timer:", error);
-      toast.error(error.response?.data?.message || "Failed to log time");
+      const err = error as { response?: { data?: { message?: string } } };
+      toast.error(err.response?.data?.message || "Failed to log time");
     } finally {
       setIsLoading(false);
     }
@@ -444,9 +447,10 @@ export const TimeLoggingPage = () => {
       setShowManualLogModal(false);
       await refreshAllData();
       toast.success("Time log created successfully!");
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error creating manual log:", error);
-      toast.error(error.response?.data?.message || "Failed to create time log");
+      const err = error as { response?: { data?: { message?: string } } };
+      toast.error(err.response?.data?.message || "Failed to create time log");
     } finally {
       setIsLoading(false);
     }
@@ -461,9 +465,10 @@ export const TimeLoggingPage = () => {
       await timeLoggingApi.deleteTimeLog(id);
       await refreshAllData();
       toast.success("Time log deleted successfully");
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error deleting time log:", error);
-      toast.error(error.response?.data?.message || "Failed to delete time log");
+      const err = error as { response?: { data?: { message?: string } } };
+      toast.error(err.response?.data?.message || "Failed to delete time log");
     }
   };
 
