@@ -30,7 +30,6 @@ import EmployeeDashboard from "./pages/employee/EmployeeDashboard";
 import EmployeeServices from "./pages/employee/services";
 import EmployeeProjects from "./pages/employee/projects";
 import EmployeeTasks from "./pages/employee/tasks";
-import EmployeeTimeLogs from "./pages/employee/time-logs";
 import EmployeeReports from "./pages/employee/reports";
 import TimeLoggingPage from "./pages/employee/TimeLoggingPage";
 
@@ -93,7 +92,6 @@ const App = () => {
                   <Route path="tasks" element={<EmployeeTasks />} />
                   <Route path="services" element={<EmployeeServices />} />
                   <Route path="projects" element={<EmployeeProjects />} />
-                  <Route path="time-logs" element={<EmployeeTimeLogs />} />
                   <Route path="reports" element={<EmployeeReports />} />
                 </Route>
 

@@ -202,7 +202,7 @@ export default function EmployeeDashboard() {
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" asChild>
-            <Link to="/employee/time-logs">
+            <Link to="/employee/time-logging">
               <Timer className="mr-2 h-4 w-4" />
               Log Time
             </Link>
@@ -292,7 +292,7 @@ export default function EmployeeDashboard() {
           </Card>
         </Link>
 
-        <Link to="/employee/time-logs" className="block">
+        <Link to="/employee/time-logging" className="block">
           <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <div>
