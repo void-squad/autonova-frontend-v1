@@ -26,6 +26,7 @@ import BookAppointment from "./pages/customer/book-appointment";
 import MyAppointments from "./pages/customer/my-appointments";
 import CustomerProjectProgress from "./pages/customer/ProjectProgress";
 import VehiclesPage from "./pages/customer/vehicles";
+import CustomerBilling from "./pages/customer/CustomerBilling";
 import Profile from "./pages/Profile";
 
 // Employee pages
@@ -36,11 +37,14 @@ import EmployeeTasks from "./pages/employee/tasks";
 import EmployeeReports from "./pages/employee/reports";
 import TimeLoggingPage from "./pages/employee/TimeLoggingPage";
 import EmployeeProjectProgress from "./pages/employee/ProjectProgress";
+import EmployeeBilling from "./pages/employee/EmployeeBilling";
 
 // Admin pages
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminEmployees from "./pages/admin/employees";
 import EmployeeDetail from "./pages/admin/employee-detail";
+import AdminBilling from "./pages/admin/AdminBilling";
+import { getAdminProjectRoutes } from "./pages/admin/projects";
 
 const ProfileRoute = () => {
   const { user } = useAuth();
@@ -66,6 +70,8 @@ const ProfileRoute = () => {
 const queryClient = new QueryClient();
 
 const App = () => {
+  const adminProjectRoutes = getAdminProjectRoutes();
+
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
@@ -111,6 +117,7 @@ const App = () => {
                   <Route path="dashboard" element={<CustomerDashboard />} />
                   <Route path="book-appointment" element={<BookAppointment />} />
                   <Route path="appointments" element={<MyAppointments />} />
+                  <Route path="billing" element={<CustomerBilling />} />
                   <Route path="progress/:projectId" element={<CustomerProjectProgress />} />
                   <Route path="vehicles" element={<VehiclesPage />} />
                 </Route>
@@ -132,6 +139,7 @@ const App = () => {
                   <Route path="projects" element={<EmployeeProjects />} />
                   <Route path="projects/:projectId/progress" element={<EmployeeProjectProgress />} />
                   <Route path="reports" element={<EmployeeReports />} />
+                  <Route path="billing" element={<EmployeeBilling />} />
                 </Route>
 
                 {/* Admin routes */}
@@ -147,6 +155,7 @@ const App = () => {
                   <Route path="dashboard" element={<AdminDashboard />} />
                   <Route path="employees" element={<AdminEmployees />} />
                   <Route path="employees/:id" element={<EmployeeDetail />} />
+                  <Route path="billing" element={<AdminBilling />} />
                 </Route>
                 {adminProjectRoutes.map((route) => (
                   <Route key={route.path} path={route.path} element={route.element} />
