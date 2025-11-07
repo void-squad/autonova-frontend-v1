@@ -1,6 +1,26 @@
-import { useCallback, useEffect, useState } from 'react';
-import { Calendar } from '@/components/ui/calendar';
-import { Card } from '@/components/ui/card';
+import { useEffect, useState } from "react";
+import { format } from "date-fns";
+import {
+  Calendar as CalendarIcon,
+  Clock,
+  Car,
+  Wrench,
+  AlertCircle,
+  CheckCircle2,
+  XCircle,
+} from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { appointmentApi } from "@/lib/api/appointments";
+import { AppointmentResponseDto, AppointmentStatus } from "@/types";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -8,21 +28,25 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
-import { Button } from '@/components/ui/button';
-import { useToast } from '@/hooks/use-toast';
-import { format } from 'date-fns';
-import { appointmentApi } from '@/lib/api/appointments';
-import { useAuth } from '@/contexts/AuthContext';
-import { AppointmentResponseDto, AppointmentStatus } from '@/types';
+} from "@/components/ui/table";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+} from "@/components/ui/dialog";
+import { useToast } from "@/components/ui/use-toast";
+import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const MyAppointments = () => {
   const { user } = useAuth();
