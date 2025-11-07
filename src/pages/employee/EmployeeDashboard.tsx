@@ -39,19 +39,14 @@ export default function EmployeeDashboard() {
   const loadDashboardData = useCallback(async () => {
     try {
       setLoading(true);
-      const [statsData, timeLogsData, workItemsData, urgentData, overdueData] = await Promise.all([
-        employeeApi.getStats(),
-        employeeApi.getTimeLogStats(),
-        employeeApi.getAllWorkItems(),
-        employeeApi.getUrgentTasks(),
-        employeeApi.getOverdueTasks(),
-      ]);
+      // Single BFF call - the backend service aggregates data from multiple microservices
+      const dashboardData = await employeeApi.getDashboardData();
 
-      setStats(statsData);
-      setTimeLogStats(timeLogsData);
-      setWorkItems(workItemsData);
-      setUrgentTasks(urgentData);
-      setOverdueTasks(overdueData);
+      setStats(dashboardData.stats);
+      setTimeLogStats(dashboardData.timeLogStats);
+      setWorkItems(dashboardData.workItems);
+      setUrgentTasks(dashboardData.urgentTasks);
+      setOverdueTasks(dashboardData.overdueTasks);
     } catch (error) {
       const err = error as { response?: { data?: { message?: string } } };
       toast({
