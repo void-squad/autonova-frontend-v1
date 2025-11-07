@@ -24,6 +24,7 @@ import NotFound from './pages/NotFound';
 import CustomerDashboard from "./pages/customer/CustomerDashboard";
 import BookAppointment from "./pages/customer/book-appointment";
 import MyAppointments from "./pages/customer/my-appointments";
+import CustomerProjectProgress from "./pages/customer/ProjectProgress";
 import VehiclesPage from "./pages/customer/vehicles";
 import Profile from "./pages/Profile";
 
@@ -34,6 +35,7 @@ import EmployeeProjects from "./pages/employee/projects";
 import EmployeeTasks from "./pages/employee/tasks";
 import EmployeeReports from "./pages/employee/reports";
 import TimeLoggingPage from "./pages/employee/TimeLoggingPage";
+import EmployeeProjectProgress from "./pages/employee/ProjectProgress";
 
 // Admin pages
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -93,6 +95,8 @@ const App = () => {
                 {/* Test routes - Remove these in production */}
                 <Route path="/test/book-appointment" element={<BookAppointment />} />
                 <Route path="/test/appointments" element={<MyAppointments />} />
+                <Route path="/test/progress/:projectId" element={<CustomerProjectProgress />} />
+                <Route path="/test/employee/progress/:projectId" element={<EmployeeProjectProgress />} />
 
                 {/* Customer routes */}
                 <Route
@@ -107,6 +111,7 @@ const App = () => {
                   <Route path="dashboard" element={<CustomerDashboard />} />
                   <Route path="book-appointment" element={<BookAppointment />} />
                   <Route path="appointments" element={<MyAppointments />} />
+                  <Route path="progress/:projectId" element={<CustomerProjectProgress />} />
                   <Route path="vehicles" element={<VehiclesPage />} />
                 </Route>
 
@@ -125,6 +130,7 @@ const App = () => {
                   <Route path="tasks" element={<EmployeeTasks />} />
                   <Route path="services" element={<EmployeeServices />} />
                   <Route path="projects" element={<EmployeeProjects />} />
+                  <Route path="projects/:projectId/progress" element={<EmployeeProjectProgress />} />
                   <Route path="reports" element={<EmployeeReports />} />
                 </Route>
 
