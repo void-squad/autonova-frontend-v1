@@ -375,6 +375,14 @@ export const timeLoggingApi = {
   },
 
   // Admin endpoints
+  // Get all time logs for admin (all statuses)
+  getAllTimeLogs: async (): Promise<TimeLog[]> => {
+    const response = await axios.get<TimeLogResponse[]>(
+      `${API_BASE_URL}/time-logs`
+    );
+    return response.data.map(mapToTimeLog);
+  },
+
   // Get all pending time logs for approval
   getPendingTimeLogs: async (): Promise<TimeLog[]> => {
     const response = await axios.get<TimeLogResponse[]>(

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Card } from "@/components/ui/card";
 import {
   Table,
@@ -17,7 +17,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Label } from "@/components/ui/label";
 import {
   Dialog,
@@ -30,15 +42,17 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { TimeLog } from "@/types/timeLogging";
 import { timeLoggingApi } from "@/Api/timeLoggingApi";
-import { Check, X, Clock, Search, Filter } from "lucide-react";
+import { Check, X, Clock, Filter, ChevronsUpDown } from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 export const TimeLoggingPage = () => {
   const [timeLogs, setTimeLogs] = useState<TimeLog[]>([]);
   const [filteredLogs, setFilteredLogs] = useState<TimeLog[]>([]);
   const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState<string>("PENDING");
+  const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [searchTerm, setSearchTerm] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
 
   // Rejection dialog state
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
@@ -46,13 +60,31 @@ export const TimeLoggingPage = () => {
     useState<TimeLog | null>(null);
   const [rejectionReason, setRejectionReason] = useState("");
 
-  // Fetch pending time logs
+  // Get unique search options from all logs
+  const searchOptions = useMemo(() => {
+    const employees = new Set<string>();
+    const projects = new Set<string>();
+    const tasks = new Set<string>();
+
+    timeLogs.forEach((log) => {
+      if (log.employeeName) employees.add(log.employeeName);
+      if (log.projectTitle) projects.add(log.projectTitle);
+      if (log.taskName) tasks.add(log.taskName);
+    });
+
+    return {
+      employees: Array.from(employees).sort(),
+      projects: Array.from(projects).sort(),
+      tasks: Array.from(tasks).sort(),
+    };
+  }, [timeLogs]);
+
+  // Fetch ALL time logs (not just pending)
   const fetchTimeLogs = async () => {
     try {
       setLoading(true);
-      const logs = await timeLoggingApi.getPendingTimeLogs();
+      const logs = await timeLoggingApi.getAllTimeLogs();
       setTimeLogs(logs);
-      setFilteredLogs(logs);
     } catch (error) {
       console.error("Error fetching time logs:", error);
       toast.error("Failed to fetch time logs");
@@ -67,7 +99,7 @@ export const TimeLoggingPage = () => {
 
   // Filter logs based on status and search term
   useEffect(() => {
-    let filtered = timeLogs;
+    let filtered = [...timeLogs];
 
     // Filter by status
     if (statusFilter !== "ALL") {
@@ -92,10 +124,19 @@ export const TimeLoggingPage = () => {
     try {
       await timeLoggingApi.approveTimeLog(logId);
       toast.success("Time log approved successfully");
-      fetchTimeLogs(); // Refresh the list
-    } catch (error) {
+      // Update the local state instead of refetching
+      setTimeLogs((prev) =>
+        prev.map((log) =>
+          log.id === logId
+            ? { ...log, approvalStatus: "APPROVED" as const }
+            : log
+        )
+      );
+    } catch (error: any) {
       console.error("Error approving time log:", error);
-      toast.error("Failed to approve time log");
+      const errorMsg =
+        error.response?.data?.message || "Failed to approve time log";
+      toast.error(errorMsg);
     }
   };
 
@@ -122,10 +163,19 @@ export const TimeLoggingPage = () => {
       setRejectDialogOpen(false);
       setSelectedLogForRejection(null);
       setRejectionReason("");
-      fetchTimeLogs(); // Refresh the list
-    } catch (error) {
+      // Update the local state instead of refetching
+      setTimeLogs((prev) =>
+        prev.map((log) =>
+          log.id === selectedLogForRejection.id
+            ? { ...log, approvalStatus: "REJECTED" as const }
+            : log
+        )
+      );
+    } catch (error: any) {
       console.error("Error rejecting time log:", error);
-      toast.error("Failed to reject time log");
+      const errorMsg =
+        error.response?.data?.message || "Failed to reject time log";
+      toast.error(errorMsg);
     }
   };
 
@@ -218,16 +268,115 @@ export const TimeLoggingPage = () => {
             </Select>
           </div>
           <div className="space-y-2">
-            <Label>Search</Label>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <Input
-                placeholder="Search by employee, project, or task..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
+            <Label>Search by Employee, Project, or Task</Label>
+            <Popover open={searchOpen} onOpenChange={setSearchOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={searchOpen}
+                  className="w-full justify-between"
+                >
+                  {searchTerm || "Type to search..."}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[400px] p-0">
+                <Command>
+                  <CommandInput
+                    placeholder="Search employee, project, or task..."
+                    value={searchTerm}
+                    onValueChange={setSearchTerm}
+                  />
+                  <CommandList>
+                    <CommandEmpty>No results found.</CommandEmpty>
+                    {searchOptions.employees.length > 0 && (
+                      <CommandGroup heading="Employees">
+                        {searchOptions.employees.map((employee) => (
+                          <CommandItem
+                            key={employee}
+                            value={employee}
+                            onSelect={(value) => {
+                              setSearchTerm(value);
+                              setSearchOpen(false);
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                searchTerm === employee
+                                  ? "opacity-100"
+                                  : "opacity-0"
+                              )}
+                            />
+                            {employee}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    )}
+                    {searchOptions.projects.length > 0 && (
+                      <CommandGroup heading="Projects">
+                        {searchOptions.projects.map((project) => (
+                          <CommandItem
+                            key={project}
+                            value={project}
+                            onSelect={(value) => {
+                              setSearchTerm(value);
+                              setSearchOpen(false);
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                searchTerm === project
+                                  ? "opacity-100"
+                                  : "opacity-0"
+                              )}
+                            />
+                            {project}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    )}
+                    {searchOptions.tasks.length > 0 && (
+                      <CommandGroup heading="Tasks">
+                        {searchOptions.tasks.map((task) => (
+                          <CommandItem
+                            key={task}
+                            value={task}
+                            onSelect={(value) => {
+                              setSearchTerm(value);
+                              setSearchOpen(false);
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                searchTerm === task
+                                  ? "opacity-100"
+                                  : "opacity-0"
+                              )}
+                            />
+                            {task}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    )}
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+            {searchTerm && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSearchTerm("")}
+                className="h-8 px-2 lg:px-3"
+              >
+                Clear search
+                <X className="ml-2 h-4 w-4" />
+              </Button>
+            )}
           </div>
         </div>
       </Card>
