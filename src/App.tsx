@@ -39,79 +39,128 @@ import EmployeeProjectProgress from "./pages/employee/ProjectProgress";
 
 // Admin pages
 import AdminDashboard from "./pages/admin/AdminDashboard";
-import AppointmentManagement from "./pages/admin/appointment-management";
+import AdminEmployees from "./pages/admin/employees";
+import EmployeeDetail from "./pages/admin/employee-detail";
+
+const ProfileRoute = () => {
+  const { user } = useAuth();
+  const role = user?.role?.toUpperCase();
+
+  let sidebar: React.ReactNode | null = null;
+
+  if (role === "ADMIN") {
+    sidebar = <AdminSidebar />;
+  } else if (role === "EMPLOYEE") {
+    sidebar = <EmployeeSidebar />;
+  } else {
+    sidebar = <CustomerSidebar />;
+  }
+
+  return (
+    <DashboardLayout sidebar={sidebar}>
+      <Profile />
+    </DashboardLayout>
+  );
+};
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            {/* Public routes */}
-            <Route path="/" element={<Landing />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Signup />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="/reset-password" element={<ResetPassword />} />
-            <Route path="/oauth2/callback" element={<OAuth2Callback />} />
+const App = () => {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <ProjectsStoreProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <Routes>
+                {/* Public routes */}
+                <Route path="/" element={<Landing />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/register" element={<Signup />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
+                <Route path="/oauth2/callback" element={<OAuth2Callback />} />
 
-            {/* Test routes - Remove these in production */}
-            <Route path="/test/book-appointment" element={<BookAppointment />} />
-            <Route path="/test/appointments" element={<MyAppointments />} />
+                <Route
+                  path="/profile"
+                  element={
+                    <RequireAuth>
+                      <ProfileRoute />
+                    </RequireAuth>
+                  }
+                />
 
-            {/* Customer routes */}
-            <Route
-              path="/customer"
-              element={
-                <RequireAuth roles={['Customer']}>
-                  <DashboardLayout sidebar={<CustomerSidebar />} />
-                </RequireAuth>
-              }
-            >
-              <Route index element={<Navigate to="/customer/dashboard" replace />} />
-              <Route path="dashboard" element={<CustomerDashboard />} />
-              <Route path="book-appointment" element={<BookAppointment />} />
-              <Route path="appointments" element={<MyAppointments />} />
-            </Route>
+                {/* Test routes - Remove these in production */}
+                <Route path="/test/book-appointment" element={<BookAppointment />} />
+                <Route path="/test/appointments" element={<MyAppointments />} />
+                <Route path="/test/progress/:projectId" element={<CustomerProjectProgress />} />
+                <Route path="/test/employee/progress/:projectId" element={<EmployeeProjectProgress />} />
 
-            {/* Employee routes */}
-            <Route
-              path="/employee"
-              element={
-                <RequireAuth roles={['Employee']}>
-                  <DashboardLayout sidebar={<EmployeeSidebar />} />
-                </RequireAuth>
-              }
-            >
-              <Route index element={<Navigate to="/employee/dashboard" replace />} />
-              <Route path="dashboard" element={<EmployeeDashboard />} />
-            </Route>
+                {/* Customer routes */}
+                <Route
+                  path="/customer"
+                  element={
+                    <RequireAuth roles={["Customer"]}>
+                      <DashboardLayout sidebar={<CustomerSidebar />} />
+                    </RequireAuth>
+                  }
+                >
+                  <Route index element={<Navigate to="/customer/dashboard" replace />} />
+                  <Route path="dashboard" element={<CustomerDashboard />} />
+                  <Route path="book-appointment" element={<BookAppointment />} />
+                  <Route path="appointments" element={<MyAppointments />} />
+                  <Route path="progress/:projectId" element={<CustomerProjectProgress />} />
+                  <Route path="vehicles" element={<VehiclesPage />} />
+                </Route>
 
-            {/* Admin routes */}
-            <Route
-              path="/admin"
-              element={
-                <RequireAuth roles={['Admin']}>
-                  <DashboardLayout sidebar={<AdminSidebar />} />
-                </RequireAuth>
-              }
-            >
-              <Route index element={<Navigate to="/admin/dashboard" replace />} />
-              <Route path="dashboard" element={<AdminDashboard />} />
-              <Route path="appointments" element={<AppointmentManagement />} />
-            </Route>
+                {/* Employee routes */}
+                <Route
+                  path="/employee"
+                  element={
+                    <RequireAuth roles={["Employee"]}>
+                      <DashboardLayout sidebar={<EmployeeSidebar />} />
+                    </RequireAuth>
+                  }
+                >
+                  <Route index element={<Navigate to="/employee/dashboard" replace />} />
+                  <Route path="dashboard" element={<EmployeeDashboard />} />
+                  <Route path="time-logging" element={<TimeLoggingPage />} />
+                  <Route path="tasks" element={<EmployeeTasks />} />
+                  <Route path="services" element={<EmployeeServices />} />
+                  <Route path="projects" element={<EmployeeProjects />} />
+                  <Route path="projects/:projectId/progress" element={<EmployeeProjectProgress />} />
+                  <Route path="reports" element={<EmployeeReports />} />
+                </Route>
 
-            {/* 404 */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
-    </AuthProvider>
-  </QueryClientProvider>
-);
+                {/* Admin routes */}
+                <Route
+                  path="/admin"
+                  element={
+                    <RequireAuth roles={["Admin"]}>
+                      <DashboardLayout sidebar={<AdminSidebar />} />
+                    </RequireAuth>
+                  }
+                >
+                  <Route index element={<Navigate to="/admin/dashboard" replace />} />
+                  <Route path="dashboard" element={<AdminDashboard />} />
+                  <Route path="employees" element={<AdminEmployees />} />
+                  <Route path="employees/:id" element={<EmployeeDetail />} />
+                </Route>
+                {adminProjectRoutes.map((route) => (
+                  <Route key={route.path} path={route.path} element={route.element} />
+                ))}
+
+                {/* 404 */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </BrowserRouter>
+          </TooltipProvider>
+        </ProjectsStoreProvider>
+      </AuthProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;

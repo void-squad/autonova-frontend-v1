@@ -1,21 +1,7 @@
-import { useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
-import { format, addDays, setHours, setMinutes } from "date-fns";
-import { Calendar as CalendarIcon, Loader2, Car, Clock, Wrench } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
-import { appointmentApi, vehicleApi } from "@/lib/api/appointments";
-import { SERVICE_TYPES, Vehicle, AppointmentStatus } from "@/types";
-import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { useEffect, useState } from 'react';
+import { Calendar } from '@/components/ui/calendar';
+import { Card } from '@/components/ui/card';
+import { Select } from '@/components/ui/select';
 import {
   Form,
   FormControl,
@@ -23,22 +9,18 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { useToast } from "@/components/ui/use-toast";
-import { cn } from "@/lib/utils";
+} from '@/components/ui/form';
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm } from 'react-hook-form';
+import * as z from 'zod';
+import { addDays, format, setHours, setMinutes } from 'date-fns';
+import { appointmentApi } from '@/lib/api/appointments';
+import { useAuth } from '@/contexts/AuthContext';
+import { Vehicle } from '@/types';
+import { Textarea } from '@/components/ui/textarea';
+import { listVehicles } from '@/services/authService';
 
 const BUSINESS_HOURS = {
   start: 9, // 9 AM
@@ -67,16 +49,35 @@ const BookAppointment = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  useEffect(() => {
+    const loadVehicles = async () => {
+      try {
+        const data = await listVehicles();
+        setVehicles(data);
+      } catch (error) {
+        console.error('Failed to load vehicles', error);
+        toast({
+          title: 'Vehicle load failed',
+          description:
+            "We couldn't fetch your vehicles. Please try again later.",
+          variant: 'destructive',
+        });
+      }
+    };
+
+    loadVehicles();
+  }, [toast]);
+
+  const [serviceTypes, setServiceTypes] = useState<
+    Array<{ id: string; name: string }>
+  >([]);
   const [availableSlots, setAvailableSlots] = useState<string[]>(TIME_SLOTS);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isCheckingAvailability, setIsCheckingAvailability] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
   });
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    setIsLoading(true);
     try {
       const [hours, minutes] = values.timeSlot.split(':');
       const startTime = setMinutes(
@@ -92,26 +93,22 @@ const BookAppointment = () => {
 
       await appointmentApi.create({
         vehicleId: values.vehicleId,
-        serviceType: values.serviceTypeId,
+        serviceTypeId: values.serviceTypeId,
         startTime,
         endTime,
         notes: values.notes,
-        status: AppointmentStatus.PENDING
       });
 
       toast({
         title: 'Success',
         description: 'Appointment booked successfully!',
       });
-      form.reset();
     } catch (error) {
       toast({
         title: 'Error',
         description: 'Failed to book appointment. Please try again.',
         variant: 'destructive',
       });
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -143,73 +140,46 @@ const BookAppointment = () => {
     setAvailableSlots(available);
   };
 
-  useEffect(() => {
-    if (user?.id) {
-      // Load customer's vehicles
-      vehicleApi.listByCustomer(user.id).then(setVehicles).catch(console.error);
-    }
-  }, [user]);
-
   return (
     <Card className="p-6">
-      <CardHeader>
-        <CardTitle>Book an Appointment</CardTitle>
-        <CardDescription>Schedule a service appointment for your vehicle</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <FormField
-              control={form.control}
-              name="vehicleId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Vehicle</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    value={field.value}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a vehicle" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {vehicles.map((vehicle) => (
-                        <SelectItem key={vehicle.id} value={vehicle.id}>
-                          {vehicle.make} {vehicle.model} ({vehicle.licensePlate})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+      <h1 className="mb-6 text-2xl font-bold">Book an Appointment</h1>
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <FormField
+            control={form.control}
+            name="vehicleId"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Vehicle</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value}>
+                  {vehicles.map((vehicle) => (
+                    <option key={vehicle.id} value={vehicle.id.toString()}>
+                      {vehicle.make} {vehicle.model} ({vehicle.licensePlate})
+                    </option>
+                  ))}
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-            <FormField
-              control={form.control}
-              name="serviceTypeId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Service Type</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    value={field.value}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a service" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {SERVICE_TYPES.map((type) => (
-                        <SelectItem key={type} value={type}>
-                          {type}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+          <FormField
+            control={form.control}
+            name="serviceTypeId"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Service Type</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value}>
+                  {serviceTypes.map((type) => (
+                    <option key={type.id} value={type.id}>
+                      {type.name}
+                    </option>
+                  ))}
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
           <FormField
             control={form.control}
@@ -280,19 +250,9 @@ const BookAppointment = () => {
             )}
           />
 
-          <Button type="submit" disabled={isLoading}>
-            {isLoading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Booking...
-              </>
-            ) : (
-              "Book Appointment"
-            )}
-          </Button>
+          <Button type="submit">Book Appointment</Button>
         </form>
       </Form>
-      </CardContent>
     </Card>
   );
 };

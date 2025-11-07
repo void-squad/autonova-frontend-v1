@@ -1,7 +1,5 @@
-
-import { AppointmentRequestDto, AppointmentResponseDto, AppointmentStatus, Vehicle } from "@/types";
-import { api } from "@/lib/api/axios-config";
-
+import { AppointmentRequestDto, AppointmentResponseDto } from '@/types';
+import { api } from '@/lib/api/axios-config';
 
 export const appointmentApi = {
   create: async (data: AppointmentRequestDto) => {
@@ -34,31 +32,10 @@ export const appointmentApi = {
     await api<void>(path, { method: 'POST' });
   },
 
-
-  updateStatus: async (id: string, status: AppointmentStatus) => {
-    const response = await api.post<AppointmentResponseDto>(
-      `/appointments/${id}/status`,
-      { status }
+  listByCustomer: async (customerId: string | number) => {
+    return api<AppointmentResponseDto[]>(
+      `/api/appointments/customer/${customerId}`
     );
-    return response.data;
-  },
-
-  listByCustomer: async (customerId: string) => {
-    const response = await api.get<AppointmentResponseDto[]>(
-      `/appointments/customer/${customerId}`
-
-    );
-  },
-
-  listAll: async (params?: {
-    status?: AppointmentStatus;
-    startDate?: string;
-    endDate?: string;
-  }) => {
-    const response = await api.get<AppointmentResponseDto[]>("/appointments", {
-      params,
-    });
-    return response.data;
   },
 
   checkAvailability: async (start: string, end: string) => {
@@ -66,12 +43,3 @@ export const appointmentApi = {
     return api<boolean>(`/api/appointments/availability?${query.toString()}`);
   },
 };
-
-// Vehicle API for fetching customer vehicles
-export const vehicleApi = {
-  listByCustomer: async (customerId: string) => {
-    const response = await api.get<Vehicle[]>(`/vehicles/customer/${customerId}`);
-    return response.data;
-  },
-};
-
