@@ -1,0 +1,8 @@
+version: '3.8'
+
+services:
+  web:
+    image: sachinthalk/autonova-frontend-v1:latest
+    ports:
+      - "80:80"
+    restart: unless-stopped
