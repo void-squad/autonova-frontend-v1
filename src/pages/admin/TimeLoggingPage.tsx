@@ -134,8 +134,12 @@ export const TimeLoggingPage = () => {
       );
     } catch (error: any) {
       console.error("Error approving time log:", error);
+      console.error("Error response:", error.response);
       const errorMsg =
-        error.response?.data?.message || "Failed to approve time log";
+        error.response?.data?.message ||
+        error.response?.data?.error ||
+        error.message ||
+        "Failed to approve time log";
       toast.error(errorMsg);
     }
   };
@@ -173,8 +177,12 @@ export const TimeLoggingPage = () => {
       );
     } catch (error: any) {
       console.error("Error rejecting time log:", error);
+      console.error("Error response:", error.response);
       const errorMsg =
-        error.response?.data?.message || "Failed to reject time log";
+        error.response?.data?.message ||
+        error.response?.data?.error ||
+        error.message ||
+        "Failed to reject time log";
       toast.error(errorMsg);
     }
   };
