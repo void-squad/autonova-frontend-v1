@@ -82,7 +82,7 @@ export default function Landing() {
         <div className="mx-auto max-w-3xl space-y-6">
           <h1 className="text-5xl font-bold leading-tight lg:text-6xl">
             Your Complete Auto Service
-            <span className="block gradient-primary bg-clip-text text-transparent">
+            <span className="block gradient-primary bg-clip-text text-white">
               Management Solution
             </span>
           </h1>

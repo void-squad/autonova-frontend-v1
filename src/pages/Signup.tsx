@@ -3,31 +3,56 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Car, Loader2, Mail, Lock, Eye, EyeOff, User, Phone, ArrowLeft, ArrowRight, Shield } from 'lucide-react';
+import {
+  Car,
+  Loader2,
+  Mail,
+  Lock,
+  Eye,
+  EyeOff,
+  User,
+  Phone,
+  ArrowLeft,
+  ArrowRight,
+  Shield,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
-const signupSchema = z.object({
-  userName: z.string().min(2, 'User name must be at least 2 characters'),
-  email: z.string().email('Invalid email address'),
-  contactNumber: z.string().min(10, 'Contact number must be at least 10 digits').regex(/^[0-9+\-\s()]+$/, 'Invalid phone number format'),
-  role: z.enum(['Customer', 'Employee', 'Admin'], {
-    required_error: 'Please select a role',
-  }),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
-  confirmPassword: z.string().min(6, 'Password must be at least 6 characters'),
-  termsAccepted: z.boolean().refine((val) => val === true, {
-    message: 'You must agree to the terms and conditions',
-  }),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords don't match",
-  path: ['confirmPassword'],
-});
+const signupSchema = z
+  .object({
+    userName: z.string().min(2, 'User name must be at least 2 characters'),
+    email: z.string().email('Invalid email address'),
+    contactNumber: z
+      .string()
+      .min(10, 'Contact number must be at least 10 digits')
+      .regex(/^[0-9+\-\s()]+$/, 'Invalid phone number format'),
+    role: z.enum(['Customer', 'Employee', 'Admin'], {
+      required_error: 'Please select a role',
+    }),
+    password: z.string().min(6, 'Password must be at least 6 characters'),
+    confirmPassword: z
+      .string()
+      .min(6, 'Password must be at least 6 characters'),
+    termsAccepted: z.boolean().refine((val) => val === true, {
+      message: 'You must agree to the terms and conditions',
+    }),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords don't match",
+    path: ['confirmPassword'],
+  });
 
 type SignupFormData = z.infer<typeof signupSchema>;
 
@@ -57,7 +82,12 @@ export default function Signup() {
   const termsAccepted = watch('termsAccepted');
 
   const validateStep1 = async () => {
-    const result = await trigger(['userName', 'email', 'contactNumber', 'role']);
+    const result = await trigger([
+      'userName',
+      'email',
+      'contactNumber',
+      'role',
+    ]);
     if (result) {
       setCurrentStep(2);
     }
@@ -68,23 +98,26 @@ export default function Signup() {
     try {
       // Map role from form value to backend expected value
       const roleMap: Record<string, 'CUSTOMER' | 'EMPLOYEE' | 'ADMIN'> = {
-        'Customer': 'CUSTOMER',
-        'Employee': 'EMPLOYEE',
-        'Admin': 'ADMIN'
+        Customer: 'CUSTOMER',
+        Employee: 'EMPLOYEE',
+        Admin: 'ADMIN',
       };
-      
-      await signup({
+
+      const response = await signup({
         userName: data.userName,
         email: data.email,
         password: data.password,
         contactNumber: data.contactNumber,
-        role: roleMap[data.role]
+        role: roleMap[data.role],
       });
-      
-      toast.success('Account created successfully! Please login.');
+
+      toast.success(
+        response.message ?? 'Account created successfully! Please login.'
+      );
       navigate('/login');
-    } catch (error: any) {
-      toast.error(error.message || 'Signup failed');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Signup failed';
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -103,11 +136,13 @@ export default function Signup() {
               </div>
               <h1 className="text-2xl font-bold text-foreground">Autonova</h1>
             </div>
-            
+
             <div className="space-y-2 animate-in fade-in slide-in-from-top-3 duration-700">
-              <h2 className="text-3xl font-bold text-foreground">Welcome to Autonova</h2>
+              <h2 className="text-3xl font-bold text-foreground">
+                Welcome to Autonova
+              </h2>
               <p className="text-muted-foreground">
-                {currentStep === 1 
+                {currentStep === 1
                   ? 'Sign up to get started with your vehicle services.'
                   : 'Complete your account setup.'}
               </p>
@@ -116,8 +151,16 @@ export default function Signup() {
 
           {/* Step Indicator */}
           <div className="flex items-center justify-center gap-2">
-            <div className={`h-2 w-16 rounded-full transition-all duration-300 ${currentStep === 1 ? 'bg-primary' : 'bg-primary/30'}`} />
-            <div className={`h-2 w-16 rounded-full transition-all duration-300 ${currentStep === 2 ? 'bg-primary' : 'bg-muted'}`} />
+            <div
+              className={`h-2 w-16 rounded-full transition-all duration-300 ${
+                currentStep === 1 ? 'bg-primary' : 'bg-primary/30'
+              }`}
+            />
+            <div
+              className={`h-2 w-16 rounded-full transition-all duration-300 ${
+                currentStep === 2 ? 'bg-primary' : 'bg-muted'
+              }`}
+            />
           </div>
 
           {/* Signup Form */}
@@ -127,7 +170,10 @@ export default function Signup() {
               <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-500">
                 {/* User Name Field */}
                 <div className="space-y-2">
-                  <Label htmlFor="userName" className="text-sm font-medium text-foreground">
+                  <Label
+                    htmlFor="userName"
+                    className="text-sm font-medium text-foreground"
+                  >
                     User Name
                   </Label>
                   <div className="relative">
@@ -144,13 +190,18 @@ export default function Signup() {
                     />
                   </div>
                   {errors.userName && (
-                    <p className="text-sm text-destructive animate-in fade-in slide-in-from-top-1 duration-300">{errors.userName.message}</p>
+                    <p className="text-sm text-destructive animate-in fade-in slide-in-from-top-1 duration-300">
+                      {errors.userName.message}
+                    </p>
                   )}
                 </div>
 
                 {/* Email Field */}
                 <div className="space-y-2">
-                  <Label htmlFor="email" className="text-sm font-medium text-foreground">
+                  <Label
+                    htmlFor="email"
+                    className="text-sm font-medium text-foreground"
+                  >
                     Email
                   </Label>
                   <div className="relative">
@@ -167,13 +218,18 @@ export default function Signup() {
                     />
                   </div>
                   {errors.email && (
-                    <p className="text-sm text-destructive animate-in fade-in slide-in-from-top-1 duration-300">{errors.email.message}</p>
+                    <p className="text-sm text-destructive animate-in fade-in slide-in-from-top-1 duration-300">
+                      {errors.email.message}
+                    </p>
                   )}
                 </div>
 
                 {/* Contact Number Field */}
                 <div className="space-y-2">
-                  <Label htmlFor="contactNumber" className="text-sm font-medium text-foreground">
+                  <Label
+                    htmlFor="contactNumber"
+                    className="text-sm font-medium text-foreground"
+                  >
                     Contact Number
                   </Label>
                   <div className="relative">
@@ -190,13 +246,18 @@ export default function Signup() {
                     />
                   </div>
                   {errors.contactNumber && (
-                    <p className="text-sm text-destructive animate-in fade-in slide-in-from-top-1 duration-300">{errors.contactNumber.message}</p>
+                    <p className="text-sm text-destructive animate-in fade-in slide-in-from-top-1 duration-300">
+                      {errors.contactNumber.message}
+                    </p>
                   )}
                 </div>
 
                 {/* Role Field */}
                 <div className="space-y-2">
-                  <Label htmlFor="role" className="text-sm font-medium text-foreground">
+                  <Label
+                    htmlFor="role"
+                    className="text-sm font-medium text-foreground"
+                  >
                     Role
                   </Label>
                   <div className="relative">
@@ -205,7 +266,12 @@ export default function Signup() {
                     </div>
                     <Select
                       value={watch('role')}
-                      onValueChange={(value) => setValue('role', value as 'Customer' | 'Employee' | 'Admin')}
+                      onValueChange={(value) =>
+                        setValue(
+                          'role',
+                          value as 'Customer' | 'Employee' | 'Admin'
+                        )
+                      }
                       disabled={loading}
                     >
                       <SelectTrigger className="pl-10 h-12">
@@ -219,7 +285,9 @@ export default function Signup() {
                     </Select>
                   </div>
                   {errors.role && (
-                    <p className="text-sm text-destructive animate-in fade-in slide-in-from-top-1 duration-300">{errors.role.message}</p>
+                    <p className="text-sm text-destructive animate-in fade-in slide-in-from-top-1 duration-300">
+                      {errors.role.message}
+                    </p>
                   )}
                 </div>
 
@@ -240,7 +308,10 @@ export default function Signup() {
               <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-500">
                 {/* Password Field */}
                 <div className="space-y-2">
-                  <Label htmlFor="password" className="text-sm font-medium text-foreground">
+                  <Label
+                    htmlFor="password"
+                    className="text-sm font-medium text-foreground"
+                  >
                     Password
                   </Label>
                   <div className="relative">
@@ -270,13 +341,18 @@ export default function Signup() {
                     </button>
                   </div>
                   {errors.password && (
-                    <p className="text-sm text-destructive animate-in fade-in slide-in-from-top-1 duration-300">{errors.password.message}</p>
+                    <p className="text-sm text-destructive animate-in fade-in slide-in-from-top-1 duration-300">
+                      {errors.password.message}
+                    </p>
                   )}
                 </div>
 
                 {/* Confirm Password Field */}
                 <div className="space-y-2">
-                  <Label htmlFor="confirmPassword" className="text-sm font-medium text-foreground">
+                  <Label
+                    htmlFor="confirmPassword"
+                    className="text-sm font-medium text-foreground"
+                  >
                     Confirm Password
                   </Label>
                   <div className="relative">
@@ -293,7 +369,9 @@ export default function Signup() {
                     />
                     <button
                       type="button"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      onClick={() =>
+                        setShowConfirmPassword(!showConfirmPassword)
+                      }
                       className="absolute inset-y-0 right-0 pr-3 flex items-center text-muted-foreground hover:text-foreground transition-colors duration-200"
                       disabled={loading}
                       tabIndex={-1}
@@ -306,7 +384,9 @@ export default function Signup() {
                     </button>
                   </div>
                   {errors.confirmPassword && (
-                    <p className="text-sm text-destructive animate-in fade-in slide-in-from-top-1 duration-300">{errors.confirmPassword.message}</p>
+                    <p className="text-sm text-destructive animate-in fade-in slide-in-from-top-1 duration-300">
+                      {errors.confirmPassword.message}
+                    </p>
                   )}
                 </div>
 
@@ -316,7 +396,9 @@ export default function Signup() {
                     <Checkbox
                       id="terms"
                       checked={termsAccepted}
-                      onCheckedChange={(checked) => setValue('termsAccepted', checked as boolean)}
+                      onCheckedChange={(checked) =>
+                        setValue('termsAccepted', checked as boolean)
+                      }
                       className="mt-1"
                     />
                     <Label
@@ -324,18 +406,26 @@ export default function Signup() {
                       className="text-sm font-normal text-foreground cursor-pointer leading-relaxed"
                     >
                       I agree to the{' '}
-                      <Link to="/terms" className="font-medium text-primary hover:text-primary/80 transition-colors">
+                      <Link
+                        to="/terms"
+                        className="font-medium text-primary hover:text-primary/80 transition-colors"
+                      >
                         Terms of Service
                       </Link>{' '}
                       and{' '}
-                      <Link to="/privacy" className="font-medium text-primary hover:text-primary/80 transition-colors">
+                      <Link
+                        to="/privacy"
+                        className="font-medium text-primary hover:text-primary/80 transition-colors"
+                      >
                         Privacy Policy
                       </Link>
                       .
                     </Label>
                   </div>
                   {errors.termsAccepted && (
-                    <p className="text-sm text-destructive animate-in fade-in slide-in-from-top-1 duration-300">{errors.termsAccepted.message}</p>
+                    <p className="text-sm text-destructive animate-in fade-in slide-in-from-top-1 duration-300">
+                      {errors.termsAccepted.message}
+                    </p>
                   )}
                 </div>
 
@@ -394,7 +484,7 @@ export default function Signup() {
           className="object-cover h-full w-full transition-transform duration-700 hover:scale-105"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-background/20 to-transparent transition-opacity duration-500" />
-        
+
         {/* Optional: Add overlay text */}
         <div className="absolute bottom-0 left-0 right-0 p-12 text-white animate-in fade-in slide-in-from-bottom-6 duration-1000 delay-300">
           <h3 className="text-3xl font-bold mb-4 drop-shadow-lg transition-all duration-300 hover:translate-x-2">

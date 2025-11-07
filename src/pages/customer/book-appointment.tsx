@@ -1,7 +1,7 @@
-import { useState } from "react";
-import { Calendar } from "@/components/ui/calendar";
-import { Card } from "@/components/ui/card";
-import { Select } from "@/components/ui/select";
+import { useEffect, useState } from 'react';
+import { Calendar } from '@/components/ui/calendar';
+import { Card } from '@/components/ui/card';
+import { Select } from '@/components/ui/select';
 import {
   Form,
   FormControl,
@@ -9,17 +9,18 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form";
-import { Button } from "@/components/ui/button";
-import { useToast } from "@/hooks/use-toast";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import * as z from "zod";
-import { addDays, format, setHours, setMinutes } from "date-fns";
-import { appointmentApi } from "@/lib/api/appointments";
-import { useAuth } from "@/contexts/AuthContext";
-import { Vehicle } from "@/types";
-import { Textarea } from "@/components/ui/textarea";
+} from '@/components/ui/form';
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm } from 'react-hook-form';
+import * as z from 'zod';
+import { addDays, format, setHours, setMinutes } from 'date-fns';
+import { appointmentApi } from '@/lib/api/appointments';
+import { useAuth } from '@/contexts/AuthContext';
+import { Vehicle } from '@/types';
+import { Textarea } from '@/components/ui/textarea';
+import { listVehicles } from '@/services/authService';
 
 const BUSINESS_HOURS = {
   start: 9, // 9 AM
@@ -29,16 +30,18 @@ const BUSINESS_HOURS = {
 const TIME_SLOTS = Array.from({ length: 16 }, (_, i) => {
   const hour = Math.floor(i / 2) + BUSINESS_HOURS.start;
   const minutes = (i % 2) * 30;
-  return `${hour.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`;
+  return `${hour.toString().padStart(2, '0')}:${minutes
+    .toString()
+    .padStart(2, '0')}`;
 });
 
 const formSchema = z.object({
-  vehicleId: z.string().min(1, "Please select a vehicle"),
-  serviceTypeId: z.string().min(1, "Please select a service type"),
+  vehicleId: z.string().min(1, 'Please select a vehicle'),
+  serviceTypeId: z.string().min(1, 'Please select a service type'),
   date: z.date({
-    required_error: "Please select a date",
+    required_error: 'Please select a date',
   }),
-  timeSlot: z.string().min(1, "Please select a time slot"),
+  timeSlot: z.string().min(1, 'Please select a time slot'),
   notes: z.string().optional(),
 });
 
@@ -46,7 +49,28 @@ const BookAppointment = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-  const [serviceTypes, setServiceTypes] = useState<Array<{ id: string; name: string }>>([]);
+  useEffect(() => {
+    const loadVehicles = async () => {
+      try {
+        const data = await listVehicles();
+        setVehicles(data);
+      } catch (error) {
+        console.error('Failed to load vehicles', error);
+        toast({
+          title: 'Vehicle load failed',
+          description:
+            "We couldn't fetch your vehicles. Please try again later.",
+          variant: 'destructive',
+        });
+      }
+    };
+
+    loadVehicles();
+  }, [toast]);
+
+  const [serviceTypes, setServiceTypes] = useState<
+    Array<{ id: string; name: string }>
+  >([]);
   const [availableSlots, setAvailableSlots] = useState<string[]>(TIME_SLOTS);
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -55,7 +79,7 @@ const BookAppointment = () => {
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
-      const [hours, minutes] = values.timeSlot.split(":");
+      const [hours, minutes] = values.timeSlot.split(':');
       const startTime = setMinutes(
         setHours(values.date, parseInt(hours)),
         parseInt(minutes)
@@ -76,20 +100,20 @@ const BookAppointment = () => {
       });
 
       toast({
-        title: "Success",
-        description: "Appointment booked successfully!",
+        title: 'Success',
+        description: 'Appointment booked successfully!',
       });
     } catch (error) {
       toast({
-        title: "Error",
-        description: "Failed to book appointment. Please try again.",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to book appointment. Please try again.',
+        variant: 'destructive',
       });
     }
   };
 
   const checkAvailability = async (date: Date, timeSlot: string) => {
-    const [hours, minutes] = timeSlot.split(":");
+    const [hours, minutes] = timeSlot.split(':');
     const startTime = setMinutes(
       setHours(date, parseInt(hours)),
       parseInt(minutes)
@@ -100,10 +124,9 @@ const BookAppointment = () => {
     ).toISOString();
 
     try {
-      const isAvailable = await appointmentApi.checkAvailability(startTime, endTime);
-      return isAvailable;
+      return await appointmentApi.checkAvailability(startTime, endTime);
     } catch (error) {
-      console.error("Failed to check availability:", error);
+      console.error('Failed to check availability:', error);
       return false;
     }
   };
@@ -128,12 +151,9 @@ const BookAppointment = () => {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Vehicle</FormLabel>
-                <Select
-                  onValueChange={field.onChange}
-                  value={field.value}
-                >
+                <Select onValueChange={field.onChange} value={field.value}>
                   {vehicles.map((vehicle) => (
-                    <option key={vehicle.id} value={vehicle.id}>
+                    <option key={vehicle.id} value={vehicle.id.toString()}>
                       {vehicle.make} {vehicle.model} ({vehicle.licensePlate})
                     </option>
                   ))}
@@ -149,10 +169,7 @@ const BookAppointment = () => {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Service Type</FormLabel>
-                <Select
-                  onValueChange={field.onChange}
-                  value={field.value}
-                >
+                <Select onValueChange={field.onChange} value={field.value}>
                   {serviceTypes.map((type) => (
                     <option key={type.id} value={type.id}>
                       {type.name}
@@ -204,10 +221,7 @@ const BookAppointment = () => {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Time</FormLabel>
-                <Select
-                  onValueChange={field.onChange}
-                  value={field.value}
-                >
+                <Select onValueChange={field.onChange} value={field.value}>
                   {availableSlots.map((slot) => (
                     <option key={slot} value={slot}>
                       {slot}

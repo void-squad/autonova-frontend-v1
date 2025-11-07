@@ -18,7 +18,7 @@ import { Pagination, PaginationContent, PaginationItem, PaginationNext, Paginati
 import { RefreshCw, ShieldCheck } from 'lucide-react';
 import { InvoiceFilters } from '@/components/billing/InvoiceFilters';
 import { InvoiceTable } from '@/components/billing/InvoiceTable';
-import { formatCurrency } from '@/lib/utils';
+import { formatInvoiceAmount } from '@/components/billing/invoice-utils';
 import { InvoiceListQueryParams, InvoiceStatus, BillingInvoice } from '@/types';
 import { useDebounce } from '@/hooks/use-debounce';
 import { useInvoices, invoiceKeys } from '@/hooks/use-invoices';
@@ -26,9 +26,15 @@ import { useInvoicePdf } from '@/hooks/use-invoice-pdf';
 import { markInvoicePaid } from '@/services/billingService';
 import { useToast } from '@/components/ui/use-toast';
 
-const EmployeeBilling = () => {
+interface BillingOperationsViewProps {
+  title: string;
+  description: string;
+  defaultStatus?: InvoiceStatus | 'ALL';
+}
+
+export const BillingOperationsView = ({ title, description, defaultStatus = 'OPEN' }: BillingOperationsViewProps) => {
   const [search, setSearch] = useState('');
-  const [status, setStatus] = useState<InvoiceStatus | 'ALL'>('OPEN');
+  const [status, setStatus] = useState<InvoiceStatus | 'ALL'>(defaultStatus);
   const [limit, setLimit] = useState(10);
   const [page, setPage] = useState(1);
   const [markingId, setMarkingId] = useState<string | null>(null);
@@ -110,8 +116,8 @@ const EmployeeBilling = () => {
     <div className="space-y-6">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Billing Operations</h1>
-          <p className="text-muted-foreground">Track invoices and record offline payments.</p>
+          <h1 className="text-3xl font-bold">{title}</h1>
+          <p className="text-muted-foreground">{description}</p>
         </div>
         <Button variant="outline" onClick={() => queryClient.invalidateQueries({ queryKey: invoiceKeys.all })} disabled={isFetching}>
           <RefreshCw className={`mr-2 h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
@@ -132,12 +138,12 @@ const EmployeeBilling = () => {
             <SnapshotCard
               label="Invoices in queue"
               value={stats.openCount}
-              helper={formatCurrency(stats.openAmount, invoices[0]?.currency || 'USD')}
+              helper={formatInvoiceAmount(stats.openAmount, invoices[0]?.currency || 'USD')}
             />
             <SnapshotCard
               label="Paid on this page"
               value={stats.paidThisPage}
-              helper={formatCurrency(stats.collectedThisPage, invoices[0]?.currency || 'USD')}
+              helper={formatInvoiceAmount(stats.collectedThisPage, invoices[0]?.currency || 'USD')}
             />
             <SnapshotCard label="Filtered results" value={total} helper="records in result set" />
             <div className="rounded-md border bg-muted/30 px-3 py-2">
@@ -228,6 +234,14 @@ const EmployeeBilling = () => {
   );
 };
 
+const EmployeeBilling = () => (
+  <BillingOperationsView
+    title="Billing Operations"
+    description="Track invoices and record offline payments."
+    defaultStatus="OPEN"
+  />
+);
+
 const SnapshotCard = ({ label, value, helper }: { label: string; value: number; helper?: string }) => (
   <div className="rounded-md border bg-muted/30 px-3 py-2">
     <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
@@ -260,7 +274,7 @@ const MarkPaidButton = ({
         </AlertDialogDescription>
       </AlertDialogHeader>
       <div className="rounded-md bg-muted/50 p-3 text-sm">
-        <p className="font-medium">{formatCurrency(invoice.amountTotal, invoice.currency)}</p>
+        <p className="font-medium">{formatInvoiceAmount(invoice.amountTotal, invoice.currency)}</p>
         <p className="text-muted-foreground text-xs">
           Project ID: {invoice.projectId ?? 'N/A'} • Customer: {invoice.customerEmail ?? 'N/A'}
         </p>

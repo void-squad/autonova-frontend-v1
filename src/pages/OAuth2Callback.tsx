@@ -1,6 +1,8 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
+import { setAuthToken } from '@/lib/api/client';
+import { storeUser } from '@/services/authService';
 
 export default function OAuth2Callback() {
   const navigate = useNavigate();
@@ -9,54 +11,54 @@ export default function OAuth2Callback() {
     // Extract query parameters from URL
     const urlParams = new URLSearchParams(window.location.search);
     const token = urlParams.get('token');
-    const refreshToken = urlParams.get('refreshToken');
     const userId = urlParams.get('userId');
     const email = urlParams.get('email');
     const role = urlParams.get('role');
+    const userName = urlParams.get('userName');
     const error = urlParams.get('error');
 
     // Handle error case
     if (error) {
       console.error('OAuth2 authentication error:', error);
-      navigate('/login', { 
-        state: { 
-          error: 'Google login failed. Please try again.' 
-        } 
+      navigate('/login', {
+        state: {
+          error: 'Google login failed. Please try again.',
+        },
       });
       return;
     }
 
     // Validate required parameters
-    if (!token || !refreshToken || !userId || !email || !role) {
+    if (!token || !userId || !email || !role) {
       console.error('Missing required OAuth2 parameters');
-      navigate('/login', { 
-        state: { 
-          error: 'Authentication failed. Missing required information.' 
-        } 
+      navigate('/login', {
+        state: {
+          error: 'Authentication failed. Missing required information.',
+        },
       });
       return;
     }
 
     try {
-      // Store authentication data in localStorage
-      localStorage.setItem('accessToken', token);
-      localStorage.setItem('refreshToken', refreshToken);
-      localStorage.setItem('userInfo', JSON.stringify({
-        id: userId,
-        email: email,
-        role: role
-      }));
+      // Persist authentication data using the new storage helpers
+      setAuthToken(token);
+      storeUser({
+        id: Number(userId),
+        email,
+        role,
+        userName: userName || email.split('@')[0],
+      });
 
       // Navigate based on user role
       switch (role.toUpperCase()) {
         case 'ADMIN':
-          navigate('/admin/dashboard');
+          navigate('/admin');
           break;
         case 'EMPLOYEE':
-          navigate('/employee/dashboard');
+          navigate('/employee');
           break;
         case 'CUSTOMER':
-          navigate('/customer/dashboard');
+          navigate('/customer');
           break;
         default:
           console.warn('Unknown role:', role);
@@ -65,10 +67,10 @@ export default function OAuth2Callback() {
       }
     } catch (err) {
       console.error('Error processing OAuth2 callback:', err);
-      navigate('/login', { 
-        state: { 
-          error: 'Failed to complete authentication. Please try again.' 
-        } 
+      navigate('/login', {
+        state: {
+          error: 'Failed to complete authentication. Please try again.',
+        },
       });
     }
   }, [navigate]);

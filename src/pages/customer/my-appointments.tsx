@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
-import { Calendar } from "@/components/ui/calendar";
-import { Card } from "@/components/ui/card";
+import { useCallback, useEffect, useState } from 'react';
+import { Calendar } from '@/components/ui/calendar';
+import { Card } from '@/components/ui/card';
 import {
   Table,
   TableBody,
@@ -8,64 +8,71 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
-import { useToast } from "@/hooks/use-toast";
-import { format } from "date-fns";
-import { appointmentApi } from "@/lib/api/appointments";
-import { useAuth } from "@/contexts/AuthContext";
-import { AppointmentResponseDto, AppointmentStatus } from "@/types";
+} from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
+import { format } from 'date-fns';
+import { appointmentApi } from '@/lib/api/appointments';
+import { useAuth } from '@/contexts/AuthContext';
+import { AppointmentResponseDto, AppointmentStatus } from '@/types';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+} from '@/components/ui/dialog';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const MyAppointments = () => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [appointments, setAppointments] = useState<AppointmentResponseDto[]>([]);
+  const [appointments, setAppointments] = useState<AppointmentResponseDto[]>(
+    []
+  );
   const [selectedDate, setSelectedDate] = useState<Date>();
   const [isRescheduleDialogOpen, setIsRescheduleDialogOpen] = useState(false);
-  const [selectedAppointment, setSelectedAppointment] = useState<AppointmentResponseDto | null>(null);
+  const [selectedAppointment, setSelectedAppointment] =
+    useState<AppointmentResponseDto | null>(null);
   const [newDate, setNewDate] = useState<Date>();
-  const [newTimeSlot, setNewTimeSlot] = useState<string>("");
+  const [newTimeSlot, setNewTimeSlot] = useState<string>('');
 
-  useEffect(() => {
-    if (user?.id) {
-      loadAppointments();
-    }
-  }, [user]);
+  const loadAppointments = useCallback(async () => {
+    const userId = user?.id;
+    if (!userId) return;
 
-  const loadAppointments = async () => {
     try {
-      const data = await appointmentApi.listByCustomer(user!.id);
+      const data = await appointmentApi.listByCustomer(userId);
       setAppointments(data);
     } catch (error) {
       toast({
-        title: "Error",
-        description: "Failed to load appointments. Please try again.",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to load appointments. Please try again.',
+        variant: 'destructive',
       });
     }
-  };
+  }, [toast, user?.id]);
+
+  useEffect(() => {
+    void loadAppointments();
+  }, [loadAppointments]);
 
   const handleCancel = async (appointmentId: string) => {
+    const userId = user?.id;
+    if (!userId) return;
+
     try {
-      await appointmentApi.cancel(appointmentId, user!.id);
+      await appointmentApi.cancel(appointmentId, userId);
       toast({
-        title: "Success",
-        description: "Appointment cancelled successfully.",
+        title: 'Success',
+        description: 'Appointment cancelled successfully.',
       });
-      loadAppointments();
+      void loadAppointments();
     } catch (error) {
       toast({
-        title: "Error",
-        description: "Failed to cancel appointment. Please try again.",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to cancel appointment. Please try again.',
+        variant: 'destructive',
       });
     }
   };
@@ -74,7 +81,7 @@ const MyAppointments = () => {
     if (!selectedAppointment || !newDate || !newTimeSlot) return;
 
     try {
-      const [hours, minutes] = newTimeSlot.split(":");
+      const [hours, minutes] = newTimeSlot.split(':');
       const startTime = new Date(newDate);
       startTime.setHours(parseInt(hours), parseInt(minutes));
 
@@ -88,16 +95,16 @@ const MyAppointments = () => {
       );
 
       toast({
-        title: "Success",
-        description: "Appointment rescheduled successfully.",
+        title: 'Success',
+        description: 'Appointment rescheduled successfully.',
       });
       setIsRescheduleDialogOpen(false);
-      loadAppointments();
+      void loadAppointments();
     } catch (error) {
       toast({
-        title: "Error",
-        description: "Failed to reschedule appointment. Please try again.",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to reschedule appointment. Please try again.',
+        variant: 'destructive',
       });
     }
   };
@@ -105,23 +112,23 @@ const MyAppointments = () => {
   const filteredAppointments = selectedDate
     ? appointments.filter(
         (apt) =>
-          format(new Date(apt.startTime), "yyyy-MM-dd") ===
-          format(selectedDate, "yyyy-MM-dd")
+          format(new Date(apt.startTime), 'yyyy-MM-dd') ===
+          format(selectedDate, 'yyyy-MM-dd')
       )
     : appointments;
 
   const getStatusColor = (status: AppointmentStatus) => {
     switch (status) {
       case AppointmentStatus.CONFIRMED:
-        return "text-green-600";
+        return 'text-green-600';
       case AppointmentStatus.IN_PROGRESS:
-        return "text-blue-600";
+        return 'text-blue-600';
       case AppointmentStatus.COMPLETED:
-        return "text-gray-600";
+        return 'text-gray-600';
       case AppointmentStatus.CANCELLED:
-        return "text-red-600";
+        return 'text-red-600';
       default:
-        return "text-yellow-600";
+        return 'text-yellow-600';
     }
   };
 
@@ -129,7 +136,7 @@ const MyAppointments = () => {
     <div className="space-y-6">
       <Card className="p-6">
         <h1 className="mb-6 text-2xl font-bold">My Appointments</h1>
-        
+
         <div className="grid gap-6 md:grid-cols-[300px_1fr]">
           <div>
             <Calendar
@@ -163,10 +170,10 @@ const MyAppointments = () => {
                 {filteredAppointments.map((appointment) => (
                   <TableRow key={appointment.id}>
                     <TableCell>
-                      {format(new Date(appointment.startTime), "MMM dd, yyyy")}
+                      {format(new Date(appointment.startTime), 'MMM dd, yyyy')}
                     </TableCell>
                     <TableCell>
-                      {format(new Date(appointment.startTime), "hh:mm a")}
+                      {format(new Date(appointment.startTime), 'hh:mm a')}
                     </TableCell>
                     <TableCell>{appointment.serviceTypeId}</TableCell>
                     <TableCell>{appointment.vehicleId}</TableCell>

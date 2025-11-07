@@ -19,12 +19,12 @@ interface FilterBarProps {
   className?: string;
 }
 
-const statusOptions: { label: string; value?: ProjectStatus }[] = [
-  { label: "All statuses", value: undefined },
-  { label: "Requested", value: "requested" },
-  { label: "Quoted", value: "quoted" },
+const statusOptions: { label: string; value: ProjectStatus }[] = [
+  { label: "Pending", value: "pending" },
   { label: "Approved", value: "approved" },
-  { label: "Rejected", value: "rejected" },
+  { label: "In progress", value: "in_progress" },
+  { label: "Completed", value: "completed" },
+  { label: "Cancelled", value: "cancelled" },
 ];
 
 export const FilterBar = ({ value, onChange, className }: FilterBarProps) => {
@@ -74,13 +74,11 @@ export const FilterBar = ({ value, onChange, className }: FilterBarProps) => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All statuses</SelectItem>
-                {statusOptions
-                  .filter((option) => option.value)
-                  .map((option) => (
-                    <SelectItem key={option.value} value={option.value!}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
+                {statusOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>

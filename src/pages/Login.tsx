@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { apiConfig } from '@/lib/api/axios-config';
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -25,8 +26,6 @@ export default function Login() {
   const { login, user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-
-  const from = (location.state as any)?.from?.pathname || '/customer';
 
   // Handle OAuth2 errors passed from callback
   useEffect(() => {
@@ -55,40 +54,30 @@ export default function Login() {
   const onSubmit = async (data: LoginFormData) => {
     setLoading(true);
     try {
-      await login({ email: data.email, password: data.password });
-      
-      // Get user info from localStorage (just stored by authService)
-      const userInfoStr = localStorage.getItem('userInfo');
-      console.log('📝 UserInfo from localStorage:', userInfoStr);
-      
-      if (userInfoStr) {
-        const userInfo = JSON.parse(userInfoStr);
-        const role = userInfo.role?.toUpperCase();
-        
-        console.log('🎭 User role:', role);
-        
-        // Redirect based on role
-        if (role === 'ADMIN') {
-          console.log('➡️ Redirecting to Admin Dashboard');
-          toast.success('Welcome Admin!');
-          navigate('/admin', { replace: true });
-        } else if (role === 'EMPLOYEE') {
-          console.log('➡️ Redirecting to Employee Dashboard');
-          toast.success('Welcome Employee!');
-          navigate('/employee', { replace: true });
-        } else {
-          console.log('➡️ Redirecting to Customer Dashboard');
-          toast.success('Welcome Customer!');
-          navigate('/customer', { replace: true });
-        }
-      } else {
-        console.error('❌ No userInfo found in localStorage');
-        toast.error('Login successful but user info missing');
-        navigate('/customer', { replace: true });
+      const authUser = await login({
+        email: data.email,
+        password: data.password,
+      });
+      const role = authUser.role?.toUpperCase();
+
+      if (role === 'ADMIN') {
+        toast.success('Welcome Admin!');
+        navigate('/admin', { replace: true });
+        return;
       }
-    } catch (error: any) {
+
+      if (role === 'EMPLOYEE') {
+        toast.success('Welcome Employee!');
+        navigate('/employee', { replace: true });
+        return;
+      }
+
+      toast.success('Welcome Customer!');
+      navigate('/customer', { replace: true });
+    } catch (error) {
       console.error('❌ Login error:', error);
-      toast.error(error.message || 'Login failed');
+      const message = error instanceof Error ? error.message : 'Login failed';
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -107,18 +96,28 @@ export default function Login() {
               </div>
               <h1 className="text-2xl font-bold text-foreground">Autonova</h1>
             </div>
-            
+
             <div className="space-y-2 animate-in fade-in slide-in-from-top-3 duration-700">
-              <h2 className="text-3xl font-bold text-foreground">Welcome Back</h2>
-              <p className="text-muted-foreground">Sign in to continue to your account.</p>
+              <h2 className="text-3xl font-bold text-foreground">
+                Welcome Back
+              </h2>
+              <p className="text-muted-foreground">
+                Sign in to continue to your account.
+              </p>
             </div>
           </div>
 
           {/* Login Form */}
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-200">
+          <form
+            onSubmit={handleSubmit(onSubmit)}
+            className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-200"
+          >
             {/* Email Field */}
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-sm font-medium text-foreground">
+              <Label
+                htmlFor="email"
+                className="text-sm font-medium text-foreground"
+              >
                 Email
               </Label>
               <div className="relative">
@@ -135,13 +134,18 @@ export default function Login() {
                 />
               </div>
               {errors.email && (
-                <p className="text-sm text-destructive animate-in fade-in slide-in-from-top-1 duration-300">{errors.email.message}</p>
+                <p className="text-sm text-destructive animate-in fade-in slide-in-from-top-1 duration-300">
+                  {errors.email.message}
+                </p>
               )}
             </div>
 
             {/* Password Field */}
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-sm font-medium text-foreground">
+              <Label
+                htmlFor="password"
+                className="text-sm font-medium text-foreground"
+              >
                 Password
               </Label>
               <div className="relative">
@@ -171,7 +175,9 @@ export default function Login() {
                 </button>
               </div>
               {errors.password && (
-                <p className="text-sm text-destructive animate-in fade-in slide-in-from-top-1 duration-300">{errors.password.message}</p>
+                <p className="text-sm text-destructive animate-in fade-in slide-in-from-top-1 duration-300">
+                  {errors.password.message}
+                </p>
               )}
             </div>
 
@@ -181,7 +187,9 @@ export default function Login() {
                 <Checkbox
                   id="remember-me"
                   checked={rememberMe}
-                  onCheckedChange={(checked) => setValue('rememberMe', checked as boolean)}
+                  onCheckedChange={(checked) =>
+                    setValue('rememberMe', checked as boolean)
+                  }
                   className="transition-all duration-200"
                 />
                 <Label
@@ -222,7 +230,9 @@ export default function Login() {
               <div className="w-full border-t border-border"></div>
             </div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-card px-2 text-muted-foreground">Or continue with</span>
+              <span className="bg-card px-2 text-muted-foreground">
+                Or continue with
+              </span>
             </div>
           </div>
 
@@ -233,10 +243,13 @@ export default function Login() {
             className="w-full h-12 text-sm font-medium hover:bg-muted transition-all duration-300 hover:scale-[1.02] hover:shadow-md active:scale-[0.98] animate-in fade-in slide-in-from-bottom-2 delay-400"
             disabled={loading}
             onClick={() => {
-              window.location.href = 'http://localhost:8081/oauth2/authorization/google';
+              window.location.href = `${apiConfig.API_BASE_URL}/oauth2/authorization/google`;
             }}
           >
-            <svg className="h-5 w-5 mr-2 transition-transform duration-300 group-hover:rotate-12" viewBox="0 0 24 24">
+            <svg
+              className="h-5 w-5 mr-2 transition-transform duration-300 group-hover:rotate-12"
+              viewBox="0 0 24 24"
+            >
               <path
                 fill="#4285F4"
                 d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -281,7 +294,7 @@ export default function Login() {
           className="object-cover h-full w-full transition-transform duration-700 hover:scale-105"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-background/20 to-transparent transition-opacity duration-500" />
-        
+
         {/* Optional: Add overlay text */}
         <div className="absolute bottom-0 left-0 right-0 p-12 text-white animate-in fade-in slide-in-from-bottom-6 duration-1000 delay-300">
           <h3 className="text-3xl font-bold mb-4 drop-shadow-lg transition-all duration-300 hover:translate-x-2">

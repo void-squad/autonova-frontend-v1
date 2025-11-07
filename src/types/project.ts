@@ -1,4 +1,4 @@
-export type ProjectStatus = "requested" | "quoted" | "approved" | "rejected";
+export type ProjectStatus = "pending" | "approved" | "in_progress" | "completed" | "cancelled";
 
 export interface Project {
   id: string;
@@ -10,6 +10,9 @@ export interface Project {
   description?: string;
   createdAt: string;
   updatedAt: string;
+  assigneeIds: string[];
+  startDate?: string;
+  endDate?: string;
 }
 
 export interface Task {
