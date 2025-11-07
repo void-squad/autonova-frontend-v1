@@ -65,11 +65,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     // Check if user is already authenticated
     const initAuth = async () => {
-      const token = localStorage.getItem('accessToken');
+      const token = localStorage.getItem('authToken');
       if (token) {
         try {
           const currentUser = await authService.getUserInfo();
-          setUser(currentUser);
+          
+          // Extract firstName from token if not already set
+          let userWithFirstName = currentUser;
+          if (!currentUser.firstName) {
+            const firstName = authService.extractFirstNameFromToken(token);
+            if (firstName) {
+              userWithFirstName = { ...currentUser, firstName };
+              authService.storeUser(userWithFirstName);
+            }
+          }
+          
+          setUser(userWithFirstName);
         } catch (error) {
           console.error('Failed to get current user:', error);
           // Clear invalid tokens
