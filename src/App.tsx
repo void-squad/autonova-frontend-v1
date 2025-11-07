@@ -10,6 +10,7 @@ import CustomerSidebar from "./components/layout/CustomerSidebar";
 import EmployeeSidebar from "./components/layout/EmployeeSidebar";
 import AdminSidebar from "./components/layout/AdminSidebar";
 import { ProjectsStoreProvider } from "./contexts/ProjectsStore";
+import Help from "./pages/Help";
 
 // Public pages
 import Landing from './pages/Landing';
@@ -46,23 +47,31 @@ import EmployeeDetail from "./pages/admin/employee-detail";
 import AdminBilling from "./pages/admin/AdminBilling";
 import { getAdminProjectRoutes } from "./pages/admin/projects";
 
+const getSidebarForRole = (role?: string | null) => {
+  const normalized = role?.toUpperCase();
+  if (normalized === "ADMIN") return <AdminSidebar />;
+  if (normalized === "EMPLOYEE") return <EmployeeSidebar />;
+  return <CustomerSidebar />;
+};
+
 const ProfileRoute = () => {
   const { user } = useAuth();
-  const role = user?.role?.toUpperCase();
-
-  let sidebar: React.ReactNode | null = null;
-
-  if (role === "ADMIN") {
-    sidebar = <AdminSidebar />;
-  } else if (role === "EMPLOYEE") {
-    sidebar = <EmployeeSidebar />;
-  } else {
-    sidebar = <CustomerSidebar />;
-  }
+  const sidebar = getSidebarForRole(user?.role);
 
   return (
     <DashboardLayout sidebar={sidebar}>
       <Profile />
+    </DashboardLayout>
+  );
+};
+
+const HelpRoute = () => {
+  const { user } = useAuth();
+  const sidebar = getSidebarForRole(user?.role);
+
+  return (
+    <DashboardLayout sidebar={sidebar}>
+      <Help />
     </DashboardLayout>
   );
 };
@@ -94,6 +103,14 @@ const App = () => {
                   element={
                     <RequireAuth>
                       <ProfileRoute />
+                    </RequireAuth>
+                  }
+                />
+                <Route
+                  path="/help"
+                  element={
+                    <RequireAuth>
+                      <HelpRoute />
                     </RequireAuth>
                   }
                 />
