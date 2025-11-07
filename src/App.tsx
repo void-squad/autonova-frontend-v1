@@ -22,8 +22,8 @@ import NotFound from './pages/NotFound';
 
 // Customer pages
 import CustomerDashboard from "./pages/customer/CustomerDashboard";
-import BookAppointment from "./pages/customer/book-appointment";
-import MyAppointments from "./pages/customer/my-appointments";
+import BookAppointment from "./pages/customer/BookAppointment";
+import MyAppointments from "./pages/customer/MyAppointments";
 import CustomerProjectProgress from "./pages/customer/ProjectProgress";
 import VehiclesPage from "./pages/customer/vehicles";
 import CustomerBilling from "./pages/customer/CustomerBilling";
@@ -45,6 +45,7 @@ import AdminEmployees from "./pages/admin/employees";
 import EmployeeDetail from "./pages/admin/employee-detail";
 import AdminBilling from "./pages/admin/AdminBilling";
 import { getAdminProjectRoutes } from "./pages/admin/projects";
+import ManageAppointments from "./pages/admin/ManageAppointments";
 
 const ProfileRoute = () => {
   const { user } = useAuth();
@@ -153,6 +154,7 @@ const App = () => {
                 >
                   <Route index element={<Navigate to="/admin/dashboard" replace />} />
                   <Route path="dashboard" element={<AdminDashboard />} />
+                  <Route path="appointments" element={<ManageAppointments />} />
                   <Route path="employees" element={<AdminEmployees />} />
                   <Route path="employees/:id" element={<EmployeeDetail />} />
                   <Route path="billing" element={<AdminBilling />} />
