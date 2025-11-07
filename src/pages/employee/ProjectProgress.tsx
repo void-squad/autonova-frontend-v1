@@ -172,6 +172,18 @@ export default function EmployeeProjectProgressPage() {
                 <div className="text-sm text-muted-foreground">Start date</div>
                 <div className="font-medium">{project?.startDate ? new Date(project.startDate).toLocaleDateString() : '-'}</div>
               </div>
+              <div>
+                <div className="text-sm text-muted-foreground">End date</div>
+                <div className="font-medium">{(project as any)?.endDate ? new Date((project as any).endDate).toLocaleDateString() : '-'}</div>
+              </div>
+              <div>
+                <div className="text-sm text-muted-foreground">Customer</div>
+                <div className="font-medium">{(project as any)?.customerName ?? (project as any)?.customer ?? '-'}</div>
+              </div>
+              <div>
+                <div className="text-sm text-muted-foreground">Budget</div>
+                <div className="font-medium">{typeof (project as any)?.budget === 'number' ? `$${((project as any).budget).toLocaleString()}` : ((project as any)?.budget ?? '-')}</div>
+              </div>
             </div>
           </CardContent>
         </Card>
