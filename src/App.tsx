@@ -148,6 +148,9 @@ const App = () => {
                   <Route path="employees" element={<AdminEmployees />} />
                   <Route path="employees/:id" element={<EmployeeDetail />} />
                 </Route>
+                {adminProjectRoutes.map((route) => (
+                  <Route key={route.path} path={route.path} element={route.element} />
+                ))}
 
                 {/* 404 */}
                 <Route path="*" element={<NotFound />} />

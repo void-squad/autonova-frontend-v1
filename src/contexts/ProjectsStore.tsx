@@ -22,9 +22,24 @@ export type ListProjectsResult = {
 };
 
 type CreateProjectInput = Pick<Project, "customerName" | "title" | "description" | "priority">;
-type UpdateProjectInput = Partial<Omit<Project, "id" | "code" | "createdAt" | "updatedAt">>;
+type UpdateProjectInput = Partial<Omit<Project, "id" | "code" | "createdAt" | "updatedAt" | "assigneeIds" | "startDate" | "endDate" | "status">>;
 type CreateTaskInput = Pick<Task, "name" | "hours" | "rate">;
 type UpdateTaskInput = Partial<CreateTaskInput>;
+type ScheduleInput = Pick<Project, "startDate" | "endDate">;
+
+export interface Employee {
+  id: string;
+  name: string;
+  email: string;
+}
+
+const EMPLOYEES: Employee[] = [
+  { id: "emp-001", name: "Sophia Alvarez", email: "s.alvarez@autonova.io" },
+  { id: "emp-002", name: "Michael Chen", email: "m.chen@autonova.io" },
+  { id: "emp-003", name: "Priya Patel", email: "p.patel@autonova.io" },
+  { id: "emp-004", name: "Daniel Brooks", email: "d.brooks@autonova.io" },
+  { id: "emp-005", name: "Helena Morais", email: "h.morais@autonova.io" },
+];
 
 interface StoredState {
   projects: Project[];
@@ -44,6 +59,13 @@ interface ProjectsStoreValue extends StoredState {
   deleteTask: (projectId: string, taskId: string) => Promise<void>;
   getQuote: (projectId: string) => Promise<Quote | null>;
   createQuote: (projectId: string, taxRate?: number) => Promise<Quote>;
+  approveProject: (id: string) => Promise<Project>;
+  rejectProject: (id: string) => Promise<Project>;
+  setAssignees: (id: string, assigneeIds: string[]) => Promise<Project>;
+  setSchedule: (id: string, schedule: ScheduleInput) => Promise<Project>;
+  startProject: (id: string) => Promise<Project>;
+  completeProject: (id: string) => Promise<Project>;
+  cancelProject: (id: string) => Promise<Project>;
 }
 
 const ProjectsStoreContext = createContext<ProjectsStoreValue | undefined>(undefined);
@@ -74,21 +96,25 @@ const getDefaultState = (): StoredState => {
       code: "PRJ-0001",
       customerName: "Alex Murphy",
       title: "Widebody Kit Installation",
-      status: "requested",
+      status: "pending",
       priority: "high",
-      description: "Install custom widebody kit with paint matching and alignment",
-      createdAt: new Date(baseCreated.getTime() - 1000 * 60 * 60 * 24 * 7).toISOString(),
-      updatedAt: new Date(baseCreated.getTime() - 1000 * 60 * 60 * 24 * 6).toISOString(),
+      description: "Install a custom widebody kit with paint matching and suspension calibration",
+      assigneeIds: [],
+      createdAt: new Date(baseCreated.getTime() - 1000 * 60 * 60 * 24 * 5).toISOString(),
+      updatedAt: new Date(baseCreated.getTime() - 1000 * 60 * 60 * 24 * 5).toISOString(),
     },
     {
       id: createId(),
       code: "PRJ-0002",
       customerName: "Dana Walsh",
       title: "Performance Tune & Exhaust Upgrade",
-      status: "quoted",
+      status: "approved",
       priority: "medium",
-      description: "ECU tune for stage 2 kit, install cat-back exhaust system",
-      createdAt: new Date(baseCreated.getTime() - 1000 * 60 * 60 * 24 * 14).toISOString(),
+      description: "Stage 2 ECU tune with titanium exhaust installation and dyno verification",
+      assigneeIds: [EMPLOYEES[1].id, EMPLOYEES[3].id],
+      startDate: new Date(baseCreated.getTime() + 1000 * 60 * 60 * 24 * 2).toISOString().slice(0, 10),
+      endDate: new Date(baseCreated.getTime() + 1000 * 60 * 60 * 24 * 10).toISOString().slice(0, 10),
+      createdAt: new Date(baseCreated.getTime() - 1000 * 60 * 60 * 24 * 12).toISOString(),
       updatedAt: new Date(baseCreated.getTime() - 1000 * 60 * 60 * 24 * 3).toISOString(),
     },
     {
@@ -96,11 +122,14 @@ const getDefaultState = (): StoredState => {
       code: "PRJ-0003",
       customerName: "Marcus Reed",
       title: "Interior Customization",
-      status: "approved",
+      status: "in_progress",
       priority: "low",
-      description: "Custom leather upholstery and ambient lighting upgrade",
+      description: "Custom leather upholstery, ambient lighting retrofit, and smart controls",
+      assigneeIds: [EMPLOYEES[0].id],
+      startDate: new Date(baseCreated.getTime() - 1000 * 60 * 60 * 24 * 4).toISOString().slice(0, 10),
+      endDate: new Date(baseCreated.getTime() + 1000 * 60 * 60 * 24 * 4).toISOString().slice(0, 10),
       createdAt: new Date(baseCreated.getTime() - 1000 * 60 * 60 * 24 * 20).toISOString(),
-      updatedAt: new Date(baseCreated.getTime() - 1000 * 60 * 60 * 24 * 2).toISOString(),
+      updatedAt: new Date(baseCreated.getTime() - 1000 * 60 * 60 * 24 * 1).toISOString(),
     },
   ];
 
@@ -176,14 +205,14 @@ const getDefaultState = (): StoredState => {
       id: createId(),
       projectId: projects[1].id,
       type: "project",
-      message: "Project quoted",
+      message: "Project approved",
       at: projects[1].updatedAt,
     },
     {
       id: createId(),
       projectId: projects[2].id,
       type: "project",
-      message: "Project approved",
+      message: "Project moved to in progress",
       at: projects[2].updatedAt,
     },
   ];
@@ -255,7 +284,7 @@ export const ProjectsStoreProvider = ({ children }: { children: React.ReactNode 
         setQuotes(parsed.quotes);
         setActivity(parsed.activity);
       } catch {
-        // ignore
+        // ignore bad payloads
       }
     }
     hasHydrated.current = true;
@@ -277,6 +306,49 @@ export const ProjectsStoreProvider = ({ children }: { children: React.ReactNode 
     };
     setActivity((prev) => [entry, ...prev]);
   }, []);
+
+  const touchProject = useCallback((projectId: string) => {
+    setProjects((prev) =>
+      prev.map((project) => (project.id === projectId ? { ...project, updatedAt: nowIso() } : project)),
+    );
+  }, []);
+
+  const mutateProject = useCallback(
+    (
+      id: string,
+      mutator: (project: Project) => Project,
+      activityMessage?: string,
+      activityType: string = "project",
+    ) => {
+      let updated: Project | null = null;
+      const timestamp = nowIso();
+
+      setProjects((prev) =>
+        prev.map((project) => {
+          if (project.id !== id) {
+            return project;
+          }
+          const candidate = mutator({ ...project });
+          updated = {
+            ...candidate,
+            updatedAt: timestamp,
+          };
+          return updated;
+        }),
+      );
+
+      if (!updated) {
+        throw new Error("Project not found");
+      }
+
+      if (activityMessage) {
+        recordActivity(id, activityMessage, activityType);
+      }
+
+      return updated;
+    },
+    [recordActivity],
+  );
 
   const recalcQuoteForProject = useCallback((projectId: string, tasksSnapshot: Task[]) => {
     setQuotes((prev) =>
@@ -325,7 +397,8 @@ export const ProjectsStoreProvider = ({ children }: { children: React.ReactNode 
           title: input.title,
           description: input.description,
           priority: input.priority,
-          status: "requested",
+          status: "pending",
+          assigneeIds: [],
           createdAt: timestamp,
           updatedAt: timestamp,
         };
@@ -354,31 +427,9 @@ export const ProjectsStoreProvider = ({ children }: { children: React.ReactNode 
   const updateProject = useCallback(
     async (id: string, patch: UpdateProjectInput) => {
       await delay();
-      let updated: Project | null = null;
-      const timestamp = nowIso();
-
-      setProjects((prev) =>
-        prev.map((project) => {
-          if (project.id !== id) {
-            return project;
-          }
-          updated = {
-            ...project,
-            ...patch,
-            updatedAt: timestamp,
-          };
-          return updated!;
-        }),
-      );
-
-      if (!updated) {
-        throw new Error("Project not found");
-      }
-
-      recordActivity(id, "Project updated", "project");
-      return updated;
+      return mutateProject(id, (project) => ({ ...project, ...patch }), "Project updated");
     },
-    [recordActivity],
+    [mutateProject],
   );
 
   const listTasks = useCallback(
@@ -405,13 +456,12 @@ export const ProjectsStoreProvider = ({ children }: { children: React.ReactNode 
         recalcQuoteForProject(projectId, next);
         return next;
       });
-      setProjects((prev) =>
-        prev.map((project) => (project.id === projectId ? { ...project, updatedAt: nowIso() } : project)),
-      );
+
+      touchProject(projectId);
       recordActivity(projectId, `Task added: ${task.name}`, "task");
       return task;
     },
-    [recordActivity, recalcQuoteForProject],
+    [recordActivity, recalcQuoteForProject, touchProject],
   );
 
   const updateTask = useCallback(
@@ -438,20 +488,18 @@ export const ProjectsStoreProvider = ({ children }: { children: React.ReactNode 
         throw new Error("Task not found");
       }
 
-      setProjects((prev) =>
-        prev.map((project) => (project.id === projectId ? { ...project, updatedAt: nowIso() } : project)),
-      );
-
+      touchProject(projectId);
       recordActivity(projectId, `Task updated: ${updatedTask.name}`, "task");
       return updatedTask;
     },
-    [recordActivity, recalcQuoteForProject],
+    [recordActivity, recalcQuoteForProject, touchProject],
   );
 
   const deleteTask = useCallback(
     async (projectId: string, taskId: string) => {
       await delay();
       let removed: Task | null = null;
+
       setTasks((prev) => {
         const next = prev.filter((task) => {
           if (task.id === taskId) {
@@ -468,13 +516,10 @@ export const ProjectsStoreProvider = ({ children }: { children: React.ReactNode 
         throw new Error("Task not found");
       }
 
-      setProjects((prev) =>
-        prev.map((project) => (project.id === projectId ? { ...project, updatedAt: nowIso() } : project)),
-      );
-
+      touchProject(projectId);
       recordActivity(projectId, `Task removed: ${removed.name}`, "task");
     },
-    [recordActivity, recalcQuoteForProject],
+    [recordActivity, recalcQuoteForProject, touchProject],
   );
 
   const getQuote = useCallback(
@@ -498,6 +543,7 @@ export const ProjectsStoreProvider = ({ children }: { children: React.ReactNode 
       if (existing) {
         quote = { ...existing, subtotal, tax, total, status: "draft" as QuoteStatus };
         setQuotes((prev) => prev.map((q) => (q.projectId === projectId ? quote : q)));
+        recordActivity(projectId, "Quote regenerated (draft)", "quote");
       } else {
         quote = {
           id: createId(),
@@ -508,21 +554,119 @@ export const ProjectsStoreProvider = ({ children }: { children: React.ReactNode 
           status: "draft",
         };
         setQuotes((prev) => [...prev, quote]);
+        recordActivity(projectId, "Quote created (draft)", "quote");
       }
 
-      setProjects((prev) =>
-        prev.map((project) => {
-          if (project.id !== projectId) {
-            return project;
-          }
-          return { ...project, status: "quoted", updatedAt: nowIso() };
-        }),
-      );
-
-      recordActivity(projectId, "Quote created (draft)", "quote");
+      touchProject(projectId);
       return quote;
     },
-    [quotes, recordActivity, tasks],
+    [quotes, recordActivity, tasks, touchProject],
+  );
+
+  const approveProject = useCallback(
+    async (id: string) => {
+      await delay();
+      return mutateProject(id, (project) => {
+        if (project.status !== "pending") {
+          throw new Error("Only pending projects can be approved.");
+        }
+        return { ...project, status: "approved" };
+      }, "Project approved");
+    },
+    [mutateProject],
+  );
+
+  const rejectProject = useCallback(
+    async (id: string) => {
+      await delay();
+      return mutateProject(id, (project) => {
+        if (project.status !== "pending") {
+          throw new Error("Only pending projects can be rejected.");
+        }
+        return { ...project, status: "cancelled" };
+      }, "Project rejected");
+    },
+    [mutateProject],
+  );
+
+  const setAssignees = useCallback(
+    async (id: string, assigneeIds: string[]) => {
+      await delay();
+      return mutateProject(
+        id,
+        (project) => ({
+          ...project,
+          assigneeIds: Array.from(new Set(assigneeIds)),
+        }),
+        "Assignees updated",
+      );
+    },
+    [mutateProject],
+  );
+
+  const setSchedule = useCallback(
+    async (id: string, schedule: ScheduleInput) => {
+      await delay();
+      if (schedule.startDate && schedule.endDate && new Date(schedule.startDate) > new Date(schedule.endDate)) {
+        throw new Error("Start date must be before the end date.");
+      }
+      return mutateProject(
+        id,
+        (project) => ({
+          ...project,
+          startDate: schedule.startDate,
+          endDate: schedule.endDate,
+        }),
+        "Schedule updated",
+      );
+    },
+    [mutateProject],
+  );
+
+  const startProject = useCallback(
+    async (id: string) => {
+      await delay();
+      return mutateProject(id, (project) => {
+        if (project.status !== "approved") {
+          throw new Error("Approve the project before starting");
+        }
+        return { ...project, status: "in_progress" };
+      }, "Project started");
+    },
+    [mutateProject],
+  );
+
+  const completeProject = useCallback(
+    async (id: string) => {
+      await delay();
+      return mutateProject(id, (project) => {
+        if (project.status !== "in_progress") {
+          throw new Error("Only in-progress projects can be completed");
+        }
+        return { ...project, status: "completed" };
+      }, "Project completed");
+    },
+    [mutateProject],
+  );
+
+  const cancelProject = useCallback(
+    async (id: string) => {
+      await delay();
+      return mutateProject(
+        id,
+        (project) => {
+          if (project.status === "cancelled") {
+            throw new Error("Project already cancelled");
+          }
+          if (project.status === "completed") {
+            throw new Error("Completed projects cannot be cancelled");
+          }
+          return { ...project, status: "cancelled" };
+        },
+        "Project cancelled",
+      );
+    },
+    [mutateProject],
   );
 
   const value = useMemo<ProjectsStoreValue>(
@@ -541,6 +685,13 @@ export const ProjectsStoreProvider = ({ children }: { children: React.ReactNode 
       deleteTask,
       getQuote,
       createQuote,
+      approveProject,
+      rejectProject,
+      setAssignees,
+      setSchedule,
+      startProject,
+      completeProject,
+      cancelProject,
     }),
     [
       projects,
@@ -557,6 +708,13 @@ export const ProjectsStoreProvider = ({ children }: { children: React.ReactNode 
       deleteTask,
       getQuote,
       createQuote,
+      approveProject,
+      rejectProject,
+      setAssignees,
+      setSchedule,
+      startProject,
+      completeProject,
+      cancelProject,
     ],
   );
 
@@ -570,3 +728,5 @@ export const useProjectsStore = () => {
   }
   return context;
 };
+
+export const useEmployees = () => EMPLOYEES;
