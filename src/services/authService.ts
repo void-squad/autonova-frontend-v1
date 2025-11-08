@@ -1,4 +1,5 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8081';
+// Use gateway service instead of direct auth-service connection
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 
 // Types
 export interface RegisterData {
@@ -165,6 +166,8 @@ export const refreshAccessToken = async (): Promise<string> => {
         throw new Error('No refresh token found');
     }
 
+    console.log('🔄 Attempting to refresh access token...');
+
     const response = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -172,9 +175,8 @@ export const refreshAccessToken = async (): Promise<string> => {
     });
 
     if (!response.ok) {
-        // Refresh token expired - clear storage and redirect to login
-        localStorage.clear();
-        window.location.href = '/login';
+        // Refresh token expired - throw error to be handled by caller
+        console.error('❌ Refresh token expired');
         throw new Error('Session expired');
     }
 
@@ -183,6 +185,8 @@ export const refreshAccessToken = async (): Promise<string> => {
     // Map backend response (token) to frontend format (accessToken)
     const accessToken = data.token || data.accessToken;
     localStorage.setItem('accessToken', accessToken);
+
+    console.log('✅ Access token refreshed successfully');
 
     return accessToken;
 };

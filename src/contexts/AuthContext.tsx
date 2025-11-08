@@ -36,18 +36,77 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Auto-refresh token before expiration (every 50 minutes if token expires in 1 hour)
+  useEffect(() => {
+    if (!user) return;
+
+    const refreshInterval = setInterval(async () => {
+      try {
+        console.log('🔄 Auto-refreshing token...');
+        await authService.refreshAccessToken();
+      } catch (error) {
+        console.error('Auto-refresh failed:', error);
+        // If refresh fails, user will be logged out on next API call
+        if (error instanceof Error && error.message === 'Session expired') {
+          localStorage.clear();
+          setUser(null);
+          window.location.href = '/login';
+        }
+      }
+    }, 50 * 60 * 1000); // 50 minutes
+
+    return () => clearInterval(refreshInterval);
+  }, [user]);
+
   useEffect(() => {
     // Check if user is already authenticated
     const initAuth = async () => {
       const token = localStorage.getItem('accessToken');
-      if (token) {
+      const refreshToken = localStorage.getItem('refreshToken');
+      const storedUserInfo = localStorage.getItem('userInfo');
+
+      // If we have both tokens and stored user info, restore session
+      if (token && refreshToken && storedUserInfo) {
         try {
-          const currentUser = await authService.getUserInfo();
-          setUser(currentUser);
+          // First try to use stored user info to avoid unnecessary API call
+          const storedUser = JSON.parse(storedUserInfo);
+          setUser(storedUser);
+
+          // Then verify token in background and refresh if needed
+          try {
+            const currentUser = await authService.getUserInfo();
+            // Update with fresh data if different
+            if (JSON.stringify(currentUser) !== JSON.stringify(storedUser)) {
+              setUser(currentUser);
+              localStorage.setItem('userInfo', JSON.stringify(currentUser));
+            }
+          } catch (verifyError: any) {
+            // If verification fails, try refresh token
+            if (verifyError.message !== 'Session expired') {
+              try {
+                await authService.refreshAccessToken();
+                const currentUser = await authService.getUserInfo();
+                setUser(currentUser);
+                localStorage.setItem('userInfo', JSON.stringify(currentUser));
+              } catch (refreshError) {
+                console.error('Token refresh failed:', refreshError);
+                // Only clear on refresh failure (refresh token expired)
+                if (refreshError instanceof Error && refreshError.message === 'Session expired') {
+                  localStorage.clear();
+                  setUser(null);
+                }
+              }
+            } else {
+              // Session expired message means refresh already failed
+              localStorage.clear();
+              setUser(null);
+            }
+          }
         } catch (error) {
-          console.error('Failed to get current user:', error);
-          // Clear invalid tokens
+          console.error('Failed to restore session:', error);
+          // Only clear if JSON parsing fails (corrupted data)
           localStorage.clear();
+          setUser(null);
         }
       }
       setLoading(false);

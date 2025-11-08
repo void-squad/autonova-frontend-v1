@@ -3,12 +3,12 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Car, Loader2, Mail, Lock, Eye, EyeOff, User, Phone, ArrowLeft, ArrowRight, Shield } from 'lucide-react';
+import { Car, Loader2, Mail, Lock, Eye, EyeOff, User, Phone, ArrowLeft, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
@@ -16,9 +16,6 @@ const signupSchema = z.object({
   userName: z.string().min(2, 'User name must be at least 2 characters'),
   email: z.string().email('Invalid email address'),
   contactNumber: z.string().min(10, 'Contact number must be at least 10 digits').regex(/^[0-9+\-\s()]+$/, 'Invalid phone number format'),
-  role: z.enum(['Customer', 'Employee', 'Admin'], {
-    required_error: 'Please select a role',
-  }),
   password: z.string().min(6, 'Password must be at least 6 characters'),
   confirmPassword: z.string().min(6, 'Password must be at least 6 characters'),
   termsAccepted: z.boolean().refine((val) => val === true, {
@@ -50,14 +47,13 @@ export default function Signup() {
     resolver: zodResolver(signupSchema),
     defaultValues: {
       termsAccepted: false,
-      role: 'Customer', // Default role
     },
   });
 
   const termsAccepted = watch('termsAccepted');
 
   const validateStep1 = async () => {
-    const result = await trigger(['userName', 'email', 'contactNumber', 'role']);
+    const result = await trigger(['userName', 'email', 'contactNumber']);
     if (result) {
       setCurrentStep(2);
     }
@@ -66,19 +62,14 @@ export default function Signup() {
   const onSubmit = async (data: SignupFormData) => {
     setLoading(true);
     try {
-      // Map role from form value to backend expected value
-      const roleMap: Record<string, 'CUSTOMER' | 'EMPLOYEE' | 'ADMIN'> = {
-        'Customer': 'CUSTOMER',
-        'Employee': 'EMPLOYEE',
-        'Admin': 'ADMIN'
-      };
-      
+      // All new users are created as CUSTOMER by default
+      // Admins can change roles later in User Management
       await signup({
         userName: data.userName,
         email: data.email,
         password: data.password,
         contactNumber: data.contactNumber,
-        role: roleMap[data.role]
+        role: 'CUSTOMER' // Always CUSTOMER for self-signup
       });
       
       toast.success('Account created successfully! Please login.');
@@ -191,35 +182,6 @@ export default function Signup() {
                   </div>
                   {errors.contactNumber && (
                     <p className="text-sm text-destructive animate-in fade-in slide-in-from-top-1 duration-300">{errors.contactNumber.message}</p>
-                  )}
-                </div>
-
-                {/* Role Field */}
-                <div className="space-y-2">
-                  <Label htmlFor="role" className="text-sm font-medium text-foreground">
-                    Role
-                  </Label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
-                      <Shield className="h-5 w-5 text-muted-foreground" />
-                    </div>
-                    <Select
-                      value={watch('role')}
-                      onValueChange={(value) => setValue('role', value as 'Customer' | 'Employee' | 'Admin')}
-                      disabled={loading}
-                    >
-                      <SelectTrigger className="pl-10 h-12">
-                        <SelectValue placeholder="Select your role" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Customer">Customer</SelectItem>
-                        <SelectItem value="Employee">Employee</SelectItem>
-                        <SelectItem value="Admin">Admin</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  {errors.role && (
-                    <p className="text-sm text-destructive animate-in fade-in slide-in-from-top-1 duration-300">{errors.role.message}</p>
                   )}
                 </div>
 

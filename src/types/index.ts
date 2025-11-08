@@ -2,11 +2,14 @@ export type Role = 'Admin' | 'Employee' | 'Customer';
 
 export type User = {
   id: string;
-  name: string;
+  userName: string;
+  firstName?: string;
+  lastName?: string;
   email: string;
-  phone?: string;
+  contactOne: string;
+  contactTwo?: string;
   address?: string;
-  roles: Role[];
+  role: Role; // Single role per user
   avatarUrl?: string;
   status: 'active' | 'disabled';
 };
