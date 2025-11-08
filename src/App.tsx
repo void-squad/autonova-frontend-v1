@@ -44,6 +44,7 @@ import EmployeeBilling from "./pages/employee/EmployeeBilling";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminEmployees from "./pages/admin/employees";
 import EmployeeDetail from "./pages/admin/employee-detail";
+import Notifications from "./pages/Notifications";
 import { TimeLoggingPage as AdminTimeLoggingPage } from "./pages/admin/TimeLoggingPage";
 import AdminBilling from "./pages/admin/AdminBilling";
 import { getAdminProjectRoutes } from "./pages/admin/projects";
@@ -73,6 +74,27 @@ const HelpRoute = () => {
   return (
     <DashboardLayout sidebar={sidebar}>
       <Help />
+    </DashboardLayout>
+  );
+};
+
+const NotificationsRoute = () => {
+  const { user } = useAuth();
+  const role = user?.role?.toUpperCase();
+
+  let sidebar: React.ReactNode | null = null;
+
+  if (role === "ADMIN") {
+    sidebar = <AdminSidebar />;
+  } else if (role === "EMPLOYEE") {
+    sidebar = <EmployeeSidebar />;
+  } else {
+    sidebar = <CustomerSidebar />;
+  }
+
+  return (
+    <DashboardLayout sidebar={sidebar}>
+      <Notifications />
     </DashboardLayout>
   );
 };
@@ -112,6 +134,15 @@ const App = () => {
                   element={
                     <RequireAuth>
                       <HelpRoute />
+                    </RequireAuth>
+                  }
+                />
+
+                <Route
+                  path="/notifications"
+                  element={
+                    <RequireAuth>
+                      <NotificationsRoute />
                     </RequireAuth>
                   }
                 />
@@ -176,6 +207,7 @@ const App = () => {
                   <Route path="time-logging" element={<AdminTimeLoggingPage />} />
                   <Route path="employees" element={<AdminEmployees />} />
                   <Route path="employees/:id" element={<EmployeeDetail />} />
+                  <Route path="notifications" element={<Notifications />} />
                   <Route path="billing" element={<AdminBilling />} />
                 </Route>
                 {adminProjectRoutes.map((route) => (
