@@ -22,6 +22,10 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { EmployeeStats, EmployeeWorkItem, TaskPriority, TimeLogStats } from '@/types/employee';
 import { Skeleton } from '@/components/ui/skeleton';
+import { 
+  fetchEmployeeDashboard, 
+  type EmployeeDashboardResponse 
+} from '@/services/employeeDashboardService';
 
 // Mock data
 const MOCK_STATS: EmployeeStats = {
@@ -199,27 +203,64 @@ export default function EmployeeDashboard() {
   const [overdueTasks, setOverdueTasks] = useState<EmployeeWorkItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('all');
+  const [dashboardData, setDashboardData] = useState<EmployeeDashboardResponse | null>(null);
 
   const loadDashboardData = async () => {
     try {
       setLoading(true);
       
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 800));
+      // Fetch data from API (with mock data fallback)
+      const data = await fetchEmployeeDashboard();
+      setDashboardData(data);
 
-      // Use mock data
-      setStats(MOCK_STATS);
-      setTimeLogStats(MOCK_TIME_LOG_STATS);
-      setWorkItems(MOCK_WORK_ITEMS);
+      // Map API response to existing stats format
+      const mappedStats: EmployeeStats = {
+        assignedServices: 0, // Not directly provided by API
+        assignedProjects: data.stats.totalActiveProjects,
+        inProgressServices: 0, // Not directly provided by API
+        inProgressProjects: data.stats.totalActiveProjects,
+        completedToday: data.stats.completedTasksThisWeek,
+        urgentTasks: data.upcomingTasks.filter(t => t.priority === 'URGENT').length,
+        overdueTasks: 0, // Calculate from tasks if needed
+        totalHoursThisWeek: 0, // Not provided by API
+      };
       
-      // Filter urgent and overdue tasks from mock data
-      const urgent = MOCK_WORK_ITEMS.filter(item => item.priority === 'urgent');
+      setStats(mappedStats);
+
+      // Map upcoming tasks to work items format
+      const mappedWorkItems: EmployeeWorkItem[] = data.upcomingTasks.map(task => ({
+        id: task.id,
+        type: 'project',
+        title: task.title,
+        description: task.description,
+        vehicle: '', // Not provided by API
+        customer: '', // Not provided by API
+        priority: task.priority.toLowerCase() as TaskPriority,
+        status: 'assigned',
+        dueDate: task.dueDate === 'TBD' ? undefined : task.dueDate,
+        estimatedTime: '', // Not provided by API
+        progress: data.activeProjects.find(p => p.projectId === task.projectId)?.progressPercentage,
+      }));
+      
+      setWorkItems([...MOCK_WORK_ITEMS, ...mappedWorkItems]);
+      
+      // Filter urgent and overdue tasks
+      const urgent = [...MOCK_WORK_ITEMS, ...mappedWorkItems].filter(item => item.priority === 'urgent');
       const overdue = MOCK_WORK_ITEMS.filter(item => item.status === 'overdue');
       
       setUrgentTasks(urgent);
       setOverdueTasks(overdue);
+
+      // Set time log stats (use mock data as API doesn't provide this)
+      setTimeLogStats(MOCK_TIME_LOG_STATS);
     } catch (error) {
       console.error('Failed to load dashboard data:', error);
+      // Fallback to mock data on error
+      setStats(MOCK_STATS);
+      setTimeLogStats(MOCK_TIME_LOG_STATS);
+      setWorkItems(MOCK_WORK_ITEMS);
+      setUrgentTasks(MOCK_WORK_ITEMS.filter(item => item.priority === 'urgent'));
+      setOverdueTasks(MOCK_WORK_ITEMS.filter(item => item.status === 'overdue'));
     } finally {
       setLoading(false);
     }
@@ -475,6 +516,94 @@ export default function EmployeeDashboard() {
           </Card>
         </Link>
       </div>
+
+      {/* Recent Activities Section */}
+      {dashboardData && dashboardData.recentActivities.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Recent Activities</CardTitle>
+            <CardDescription>Your latest updates and actions</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {dashboardData.recentActivities.map((activity) => (
+                <div
+                  key={activity.id}
+                  className="flex items-start gap-3 p-3 border rounded-lg"
+                >
+                  <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/20">
+                    <CheckCircle className="h-4 w-4 text-blue-600" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">{activity.description}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {new Date(activity.timestamp).toLocaleString()}
+                    </p>
+                  </div>
+                  <Badge variant={activity.status === 'COMPLETED' ? 'secondary' : 'outline'}>
+                    {activity.status}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Active Projects Section */}
+      {dashboardData && dashboardData.activeProjects.length > 0 && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Active Projects</CardTitle>
+                <CardDescription>Your currently active modification projects</CardDescription>
+              </div>
+              <Button variant="outline" size="sm" asChild>
+                <Link to="/employee/projects">
+                  View All
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {dashboardData.activeProjects.map((project) => (
+                <div
+                  key={project.projectId}
+                  className="border rounded-lg p-4 space-y-3"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <h4 className="font-medium">{project.projectName}</h4>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Customer: {project.customerName}
+                      </p>
+                    </div>
+                    <Badge variant={project.status === 'InProgress' ? 'default' : 'outline'}>
+                      {project.status}
+                    </Badge>
+                  </div>
+                  
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Progress</span>
+                      <span className="font-medium">{project.progressPercentage}%</span>
+                    </div>
+                    <Progress value={project.progressPercentage} className="h-2" />
+                  </div>
+
+                  <div className="flex items-center justify-between text-sm text-muted-foreground">
+                    <span>Start: {new Date(project.startDate).toLocaleDateString()}</span>
+                    <span>Due: {new Date(project.expectedCompletionDate).toLocaleDateString()}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Urgent Tasks Section */}
       {urgentTasks.length > 0 && (
