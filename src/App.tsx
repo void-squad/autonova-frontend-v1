@@ -10,6 +10,7 @@ import CustomerSidebar from "./components/layout/CustomerSidebar";
 import EmployeeSidebar from "./components/layout/EmployeeSidebar";
 import AdminSidebar from "./components/layout/AdminSidebar";
 import { ProjectsStoreProvider } from "./contexts/ProjectsStore";
+import Help from "./pages/Help";
 
 // Public pages
 import Landing from './pages/Landing';
@@ -43,27 +44,36 @@ import EmployeeBilling from "./pages/employee/EmployeeBilling";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminEmployees from "./pages/admin/employees";
 import EmployeeDetail from "./pages/admin/employee-detail";
+import { TimeLoggingPage as AdminTimeLoggingPage } from "./pages/admin/TimeLoggingPage";
 import AdminBilling from "./pages/admin/AdminBilling";
 import { getAdminProjectRoutes } from "./pages/admin/projects";
 import ManageAppointments from "./pages/admin/ManageAppointments";
 
+const getSidebarForRole = (role?: string | null) => {
+  const normalized = role?.toUpperCase();
+  if (normalized === "ADMIN") return <AdminSidebar />;
+  if (normalized === "EMPLOYEE") return <EmployeeSidebar />;
+  return <CustomerSidebar />;
+};
+
 const ProfileRoute = () => {
   const { user } = useAuth();
-  const role = user?.role?.toUpperCase();
-
-  let sidebar: React.ReactNode | null = null;
-
-  if (role === "ADMIN") {
-    sidebar = <AdminSidebar />;
-  } else if (role === "EMPLOYEE") {
-    sidebar = <EmployeeSidebar />;
-  } else {
-    sidebar = <CustomerSidebar />;
-  }
+  const sidebar = getSidebarForRole(user?.role);
 
   return (
     <DashboardLayout sidebar={sidebar}>
       <Profile />
+    </DashboardLayout>
+  );
+};
+
+const HelpRoute = () => {
+  const { user } = useAuth();
+  const sidebar = getSidebarForRole(user?.role);
+
+  return (
+    <DashboardLayout sidebar={sidebar}>
+      <Help />
     </DashboardLayout>
   );
 };
@@ -95,6 +105,14 @@ const App = () => {
                   element={
                     <RequireAuth>
                       <ProfileRoute />
+                    </RequireAuth>
+                  }
+                />
+                <Route
+                  path="/help"
+                  element={
+                    <RequireAuth>
+                      <HelpRoute />
                     </RequireAuth>
                   }
                 />
@@ -155,6 +173,9 @@ const App = () => {
                   <Route index element={<Navigate to="/admin/dashboard" replace />} />
                   <Route path="dashboard" element={<AdminDashboard />} />
                   <Route path="appointments" element={<ManageAppointments />} />
+              <Route path="employees" element={<AdminEmployees />} />
+              <Route path="employees/:id" element={<EmployeeDetail />} />
+                  <Route path="time-logging" element={<AdminTimeLoggingPage />} />
                   <Route path="employees" element={<AdminEmployees />} />
                   <Route path="employees/:id" element={<EmployeeDetail />} />
                   <Route path="billing" element={<AdminBilling />} />

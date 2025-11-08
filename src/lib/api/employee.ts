@@ -1,7 +1,37 @@
 import { api } from './axios-config';
 import { ServiceTask, ModificationProject, EmployeeStats, EmployeeWorkItem, TimeLogStats } from '@/types/employee';
 
+// Dashboard data interface - aggregated response from BFF
+export interface EmployeeDashboardData {
+  stats: EmployeeStats;
+  timeLogStats: TimeLogStats;
+  workItems: EmployeeWorkItem[];
+  urgentTasks: EmployeeWorkItem[];
+  overdueTasks: EmployeeWorkItem[];
+}
+
 export const employeeApi = {
+  // ==========================================
+  // BFF Endpoint - Single aggregated call
+  // ==========================================
+  
+  /**
+   * Get complete dashboard data in a single call.
+   * This calls the BFF (Backend For Frontend) endpoint which aggregates data from:
+   * - Projects Service
+   * - Tasks/Services Service
+   * - Time Logs Service
+   * - Auth Service
+   */
+  getDashboardData: async (): Promise<EmployeeDashboardData> => {
+    const response = await api.get<EmployeeDashboardData>('/employee/dashboard');
+    return response.data;
+  },
+
+  // ==========================================
+  // Legacy Individual Endpoints (kept for backward compatibility)
+  // ==========================================
+  
   // Get employee dashboard statistics
   getStats: async (): Promise<EmployeeStats> => {
     const response = await api.get<EmployeeStats>('/employee/stats');

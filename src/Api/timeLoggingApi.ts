@@ -24,6 +24,7 @@ const mapToTimeLog = (response: TimeLogResponse): TimeLog => ({
   employeeName: response.employeeName,
   hours: response.hours,
   note: response.note,
+  approvalStatus: response.approvalStatus,
   loggedAt: response.loggedAt,
 });
 
@@ -371,5 +372,42 @@ export const timeLoggingApi = {
       `${API_BASE_URL}/time-logs/employee/${employeeId}/efficiency-metrics`
     );
     return response.data;
+  },
+
+  // Admin endpoints
+  // Get all time logs for admin (all statuses)
+  getAllTimeLogs: async (): Promise<TimeLog[]> => {
+    const response = await axios.get<TimeLogResponse[]>(
+      `${API_BASE_URL}/time-logs`
+    );
+    return response.data.map(mapToTimeLog);
+  },
+
+  // Get all pending time logs for approval
+  getPendingTimeLogs: async (): Promise<TimeLog[]> => {
+    const response = await axios.get<TimeLogResponse[]>(
+      `${API_BASE_URL}/time-logs/pending`
+    );
+    return response.data.map(mapToTimeLog);
+  },
+
+  // Approve a time log
+  approveTimeLog: async (timeLogId: string): Promise<TimeLog> => {
+    const response = await axios.patch<TimeLogResponse>(
+      `${API_BASE_URL}/time-logs/${timeLogId}/approve`
+    );
+    return mapToTimeLog(response.data);
+  },
+
+  // Reject a time log
+  rejectTimeLog: async (
+    timeLogId: string,
+    reason: string
+  ): Promise<TimeLog> => {
+    const response = await axios.patch<TimeLogResponse>(
+      `${API_BASE_URL}/time-logs/${timeLogId}/reject`,
+      { reason }
+    );
+    return mapToTimeLog(response.data);
   },
 };

@@ -149,9 +149,8 @@ export default function EmployeeProjectProgressPage() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-6">
+    <div className="max-w-10xl mx-auto px-2 py-6">
       <div className="space-y-6">
-        <ProjectProgressBar status={progress?.status ?? project?.status ?? 'unknown'} percent={progress?.progressPercentage ?? project?.progressPct} />
 
         {/* Project details */}
         <Card>
@@ -187,6 +186,8 @@ export default function EmployeeProjectProgressPage() {
             </div>
           </CardContent>
         </Card>
+
+        <ProjectProgressBar status={progress?.status ?? project?.status ?? 'unknown'} percent={progress?.progressPercentage ?? project?.progressPct} />
 
         {/* Status update card - separate from message posting */}
         <div className="rounded-lg border bg-card p-6">
