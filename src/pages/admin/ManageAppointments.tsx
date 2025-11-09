@@ -31,7 +31,7 @@ export default function AppointmentManagement() {
           date: new Date(a.startTime).toISOString().split('T')[0],
           time: new Date(a.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           status: a.status.charAt(0).toUpperCase() + a.status.slice(1).toLowerCase(),
-          employee: a.assignedEmployeeName || null,
+       
           created: new Date(a.createdAt).toISOString().split('T')[0],
         }));
 
@@ -92,38 +92,6 @@ export default function AppointmentManagement() {
     } catch (err) {
       console.error(err);
       alert('Error updating appointment status');
-    }
-  };
-
-  // ✅ Assign employee
-  const handleAssignEmployee = (apt) => {
-    setAssignModal(apt);
-    setSelectedEmployee('');
-  };
-
-  const submitAssignment = async () => {
-    if (!selectedEmployee) {
-      alert('Please select an employee');
-      return;
-    }
-
-    try {
-      const res = await fetch(`http://localhost:8080/api/v1/appointments/${assignModal.id}/assign?employeeId=${selectedEmployee}`, {
-        method: 'PUT',
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-      });
-      if (!res.ok) throw new Error('Failed to assign employee');
-
-      const data = await res.json();
-      setAppointments(appointments.map(a =>
-        a.id === assignModal.id ? { ...a, employee: data.assignedEmployeeName } : a
-      ));
-
-      alert('Employee assigned successfully');
-      setAssignModal(null);
-    } catch (err) {
-      console.error(err);
-      alert('Error assigning employee');
     }
   };
 
@@ -219,11 +187,7 @@ export default function AppointmentManagement() {
               <option value="cancelled">Cancelled</option>
             </select>
             <input type="date" className="px-4 py-2 border rounded-md" value={filterDate} onChange={(e) => setFilterDate(e.target.value)} />
-            <select className="px-4 py-2 border rounded-md" value={filterEmployee} onChange={(e) => setFilterEmployee(e.target.value)}>
-              <option value="all">All Employees</option>
-              {employees.map(emp => <option key={emp.id} value={emp.name}>{emp.name}</option>)}
-              <option value="">Unassigned</option>
-            </select>
+      
           </div>
         </div>
 
@@ -238,7 +202,7 @@ export default function AppointmentManagement() {
                   <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Service</th>
                   <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Date & Time</th>
                   <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Status</th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Assigned To</th>
+                 
                   <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Actions</th>
                 </tr>
               </thead>
@@ -258,18 +222,7 @@ export default function AppointmentManagement() {
                     <td className="px-6 py-4">
                       <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(apt.status)}`}>{apt.status}</span>
                     </td>
-                    <td className="px-6 py-4">
-                      {apt.employee ? (
-                        <div className="flex items-center gap-2 text-sm">
-                          <User className="h-4 w-4 text-gray-400" />
-                          {apt.employee}
-                        </div>
-                      ) : (
-                        <button onClick={() => handleAssignEmployee(apt)} className="text-sm text-blue-600 hover:text-blue-800 font-medium">
-                          Assign
-                        </button>
-                      )}
-                    </td>
+                    
                     <td className="px-6 py-4">
                       <div className="flex gap-2">
                         {apt.status === 'Pending' && (
@@ -305,42 +258,6 @@ export default function AppointmentManagement() {
           )}
         </div>
       </div>
-
-      {/* ✅ Assign Modal */}
-      {assignModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-md w-full p-6">
-            <h3 className="text-2xl font-bold mb-4">Assign Employee</h3>
-            <div className="mb-4">
-              <div className="text-sm text-gray-600 mb-2">Appointment Details:</div>
-              <div className="bg-gray-50 rounded-lg p-3 space-y-1">
-                <div className="text-sm"><span className="font-medium">Customer:</span> {assignModal.customer}</div>
-                <div className="text-sm"><span className="font-medium">Service:</span> {assignModal.service}</div>
-                <div className="text-sm"><span className="font-medium">Date:</span> {assignModal.date} at {assignModal.time}</div>
-              </div>
-            </div>
-            <div className="mb-6">
-              <label className="text-sm font-medium block mb-2">Select Employee</label>
-              <select
-                className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                value={selectedEmployee}
-                onChange={(e) => setSelectedEmployee(e.target.value)}
-              >
-                <option value="">Choose an employee</option>
-                {employees.map(emp => <option key={emp.id} value={emp.id}>{emp.name}</option>)}
-              </select>
-            </div>
-            <div className="flex gap-3">
-              <button onClick={() => setAssignModal(null)} className="flex-1 px-4 py-2 border rounded-md hover:bg-gray-50 font-medium">
-                Cancel
-              </button>
-              <button onClick={submitAssignment} className="flex-1 px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-md hover:from-blue-700 hover:to-blue-800 font-medium">
-                Assign
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
