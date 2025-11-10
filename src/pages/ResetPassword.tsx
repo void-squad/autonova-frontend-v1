@@ -3,20 +3,32 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Car, Loader2, Lock, Eye, EyeOff, ArrowLeft, CheckCircle } from 'lucide-react';
+import {
+  Car,
+  Loader2,
+  Lock,
+  Eye,
+  EyeOff,
+  ArrowLeft,
+  CheckCircle,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import * as authService from '@/services/authService';
 
-const resetPasswordSchema = z.object({
-  password: z.string().min(6, 'Password must be at least 6 characters'),
-  confirmPassword: z.string().min(6, 'Password must be at least 6 characters'),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords don't match",
-  path: ["confirmPassword"],
-});
+const resetPasswordSchema = z
+  .object({
+    password: z.string().min(6, 'Password must be at least 6 characters'),
+    confirmPassword: z
+      .string()
+      .min(6, 'Password must be at least 6 characters'),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords don't match",
+    path: ['confirmPassword'],
+  });
 
 type ResetPasswordFormData = z.infer<typeof resetPasswordSchema>;
 
@@ -24,7 +36,7 @@ export default function ResetPassword() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token');
-  
+
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -47,16 +59,18 @@ export default function ResetPassword() {
     setLoading(true);
     try {
       await authService.resetPassword(token, data.password);
-      
+
       setResetSuccess(true);
       toast.success('Password reset successfully');
-      
+
       // Redirect to login after 3 seconds
       setTimeout(() => {
         navigate('/login');
       }, 3000);
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to reset password');
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Failed to reset password';
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -75,9 +89,12 @@ export default function ResetPassword() {
               <h1 className="text-2xl font-bold text-foreground">Autonova</h1>
             </div>
             <div className="space-y-4">
-              <h2 className="text-3xl font-bold text-foreground">Invalid Reset Link</h2>
+              <h2 className="text-3xl font-bold text-foreground">
+                Invalid Reset Link
+              </h2>
               <p className="text-muted-foreground">
-                This password reset link is invalid or has expired. Please request a new one.
+                This password reset link is invalid or has expired. Please
+                request a new one.
               </p>
               <Button
                 onClick={() => navigate('/forgot-password')}
@@ -103,7 +120,7 @@ export default function ResetPassword() {
           className="object-cover h-full w-full transition-transform duration-700 hover:scale-105"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-background/20 to-transparent transition-opacity duration-500" />
-        
+
         {/* Optional: Add overlay text */}
         <div className="absolute bottom-0 left-0 right-0 p-12 text-white animate-in fade-in slide-in-from-bottom-6 duration-1000 delay-300">
           <h3 className="text-3xl font-bold mb-4 drop-shadow-lg transition-all duration-300 hover:translate-x-2">
@@ -126,23 +143,31 @@ export default function ResetPassword() {
               </div>
               <h1 className="text-2xl font-bold text-foreground">Autonova</h1>
             </div>
-            
+
             <div className="space-y-2 animate-in fade-in slide-in-from-top-3 duration-700">
-              <h2 className="text-3xl font-bold text-foreground">Reset Password</h2>
+              <h2 className="text-3xl font-bold text-foreground">
+                Reset Password
+              </h2>
               <p className="text-muted-foreground">
-                {resetSuccess 
-                  ? "Your password has been reset successfully!"
-                  : "Enter your new password below"}
+                {resetSuccess
+                  ? 'Your password has been reset successfully!'
+                  : 'Enter your new password below'}
               </p>
             </div>
           </div>
 
           {/* Form or Success Message */}
           {!resetSuccess ? (
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-200">
+            <form
+              onSubmit={handleSubmit(onSubmit)}
+              className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-200"
+            >
               {/* New Password Field */}
               <div className="space-y-2">
-                <Label htmlFor="password" className="text-sm font-medium text-foreground">
+                <Label
+                  htmlFor="password"
+                  className="text-sm font-medium text-foreground"
+                >
                   New Password
                 </Label>
                 <div className="relative">
@@ -171,13 +196,18 @@ export default function ResetPassword() {
                   </button>
                 </div>
                 {errors.password && (
-                  <p className="text-sm text-destructive animate-in fade-in slide-in-from-top-1 duration-300">{errors.password.message}</p>
+                  <p className="text-sm text-destructive animate-in fade-in slide-in-from-top-1 duration-300">
+                    {errors.password.message}
+                  </p>
                 )}
               </div>
 
               {/* Confirm Password Field */}
               <div className="space-y-2">
-                <Label htmlFor="confirmPassword" className="text-sm font-medium text-foreground">
+                <Label
+                  htmlFor="confirmPassword"
+                  className="text-sm font-medium text-foreground"
+                >
                   Confirm New Password
                 </Label>
                 <div className="relative">
@@ -206,7 +236,9 @@ export default function ResetPassword() {
                   </button>
                 </div>
                 {errors.confirmPassword && (
-                  <p className="text-sm text-destructive animate-in fade-in slide-in-from-top-1 duration-300">{errors.confirmPassword.message}</p>
+                  <p className="text-sm text-destructive animate-in fade-in slide-in-from-top-1 duration-300">
+                    {errors.confirmPassword.message}
+                  </p>
                 )}
               </div>
 
@@ -233,10 +265,11 @@ export default function ResetPassword() {
                   <CheckCircle className="h-16 w-16 text-primary animate-in zoom-in duration-500" />
                 </div>
                 <p className="text-sm text-foreground text-center">
-                  Your password has been successfully reset. You will be redirected to the login page shortly.
+                  Your password has been successfully reset. You will be
+                  redirected to the login page shortly.
                 </p>
               </div>
-              
+
               <Button
                 onClick={() => navigate('/login')}
                 className="w-full h-12 text-sm font-medium transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"

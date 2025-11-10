@@ -1,85 +1,117 @@
-import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
+if (!API_BASE_URL) {
+  throw new Error(
+    'VITE_API_BASE_URL is not defined. Please set it in your environment.'
+  );
+}
 
-// Create axios instance
-export const apiClient = axios.create({
-  baseURL: API_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-  withCredentials: true, // For cookie-based auth
-});
+const AUTH_TOKEN_KEY = 'authToken';
+const AUTH_TOKEN_ISSUED_AT_KEY = 'authTokenIssuedAt';
 
-// Token management
-let accessToken: string | null = null;
-let refreshToken: string | null = null;
-let refreshPromise: Promise<string> | null = null;
-
-export const setTokens = (access: string, refresh: string) => {
-  accessToken = access;
-  refreshToken = refresh;
+const redirectToLogin = () => {
+  if (typeof window === 'undefined') return;
+  if (window.location.pathname === '/login') return;
+  window.location.assign('/login');
 };
 
-export const getAccessToken = () => accessToken;
+export const getAuthToken = () =>
+  typeof window !== 'undefined' ? localStorage.getItem(AUTH_TOKEN_KEY) : null;
 
-export const clearTokens = () => {
-  accessToken = null;
-  refreshToken = null;
+export const setAuthToken = (token: string) => {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(AUTH_TOKEN_KEY, token);
+  localStorage.setItem(AUTH_TOKEN_ISSUED_AT_KEY, new Date().toISOString());
 };
 
-// Request interceptor to attach tokens
-apiClient.interceptors.request.use(
-  (config: InternalAxiosRequestConfig) => {
-    if (accessToken && config.headers) {
-      config.headers.Authorization = `Bearer ${accessToken}`;
-    }
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
+export const clearAuthToken = () => {
+  if (typeof window === 'undefined') return;
+  localStorage.removeItem(AUTH_TOKEN_KEY);
+  localStorage.removeItem(AUTH_TOKEN_ISSUED_AT_KEY);
+};
 
-// Response interceptor for token refresh
-apiClient.interceptors.response.use(
-  (response) => response,
-  async (error: AxiosError) => {
-    const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+export const getAuthTokenIssuedAt = () =>
+  typeof window !== 'undefined'
+    ? localStorage.getItem(AUTH_TOKEN_ISSUED_AT_KEY)
+    : null;
 
-    // If 401 and we have a refresh token and haven't retried yet
-    if (error.response?.status === 401 && refreshToken && !originalRequest._retry) {
-      originalRequest._retry = true;
+const shouldSkipContentType = (body: BodyInit | null | undefined) =>
+  body instanceof FormData ||
+  body instanceof Blob ||
+  body instanceof ArrayBuffer ||
+  body instanceof URLSearchParams;
 
-      try {
-        // Ensure only one refresh request at a time
-        if (!refreshPromise) {
-          refreshPromise = (async () => {
-            const response = await axios.post(
-              `${API_URL}/auth/refresh`,
-              { refreshToken },
-              { withCredentials: true }
-            );
-            const newAccessToken = response.data.accessToken;
-            setTokens(newAccessToken, refreshToken);
-            refreshPromise = null;
-            return newAccessToken;
-          })();
-        }
-
-        const newAccessToken = await refreshPromise;
-
-        // Retry original request with new token
-        if (originalRequest.headers) {
-          originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
-        }
-        return apiClient(originalRequest);
-      } catch (refreshError) {
-        // Refresh failed, clear tokens and redirect to login
-        clearTokens();
-        window.location.href = '/login';
-        return Promise.reject(refreshError);
-      }
-    }
-
-    return Promise.reject(error);
+const parseResponseBody = async <T>(response: Response): Promise<T> => {
+  if (response.status === 204) {
+    return undefined as T;
   }
-);
+
+  const contentType = response.headers.get('Content-Type');
+  if (contentType?.includes('application/json')) {
+    return (await response.json()) as T;
+  }
+
+  const text = await response.text();
+  return text as unknown as T;
+};
+
+export async function api<T>(
+  path: string,
+  options: RequestInit = {}
+): Promise<T> {
+  const { headers, body, credentials, ...rest } = options;
+
+  const requestHeaders = new Headers(headers ?? {});
+
+  if (!shouldSkipContentType(body) && !requestHeaders.has('Content-Type')) {
+    requestHeaders.set('Content-Type', 'application/json');
+  }
+
+  const token = getAuthToken();
+  if (token) {
+    requestHeaders.set('Authorization', `Bearer ${token}`);
+  }
+
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    body,
+    headers: requestHeaders,
+    credentials: credentials ?? 'include',
+    ...rest,
+  });
+
+  if (response.status === 401 || response.status === 403) {
+    clearAuthToken();
+    redirectToLogin();
+    const errorBody = await response.json().catch(() => ({
+      message: response.statusText,
+    }));
+    throw new Error(errorBody.error ?? errorBody.message ?? 'Unauthorized');
+  }
+
+  const parsedBody = await parseResponseBody<T>(response);
+
+  if (!response.ok) {
+    let message: string | undefined;
+
+    if (parsedBody && typeof parsedBody === 'object') {
+      const body = parsedBody as Record<string, unknown>;
+      message =
+        (typeof body.error === 'string' && body.error) ||
+        (typeof body.message === 'string' && body.message);
+    }
+
+    if (!message && typeof parsedBody === 'string') {
+      message = parsedBody;
+    }
+
+    throw new Error(message ?? response.statusText);
+  }
+
+  return parsedBody;
+}
+
+export const apiConfig = {
+  API_BASE_URL,
+  AUTH_TOKEN_KEY,
+  AUTH_TOKEN_ISSUED_AT_KEY,
+};

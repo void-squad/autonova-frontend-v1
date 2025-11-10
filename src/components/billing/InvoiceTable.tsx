@@ -3,9 +3,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { Download } from 'lucide-react';
 import { BillingInvoice } from '@/types';
-import { formatCurrency, formatDateTime } from '@/lib/utils';
+import { formatDateTime } from '@/lib/utils';
 import { InvoiceStatusBadge } from './InvoiceStatusBadge';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { formatInvoiceAmount } from './invoice-utils';
 
 interface InvoiceTableProps {
   invoices: BillingInvoice[];
@@ -61,7 +62,7 @@ export const InvoiceTable = ({ invoices, onDownload, downloadingId, renderAction
                 <TableCell className="hidden md:table-cell">
                   <div className="text-sm">{invoice.customerEmail ?? '—'}</div>
                 </TableCell>
-                <TableCell className="font-semibold">{formatCurrency(invoice.amountTotal, invoice.currency)}</TableCell>
+                <TableCell className="font-semibold">{formatInvoiceAmount(invoice.amountTotal, invoice.currency)}</TableCell>
                 <TableCell>
                   <InvoiceStatusBadge status={invoice.status} />
                 </TableCell>

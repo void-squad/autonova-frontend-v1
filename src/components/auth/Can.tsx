@@ -10,7 +10,16 @@ interface CanProps {
 export const Can = ({ roles, children, fallback = null }: CanProps) => {
   const { user } = useAuth();
 
-  if (!user || !roles.some((role) => user.roles.includes(role))) {
+  if (!user) {
+    return <>{fallback}</>;
+  }
+
+  const normalizedUserRole = user.role?.toUpperCase();
+  const hasRole = roles.some(
+    (role) => normalizedUserRole === role.toUpperCase()
+  );
+
+  if (!hasRole) {
     return <>{fallback}</>;
   }
 

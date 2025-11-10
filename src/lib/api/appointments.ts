@@ -1,38 +1,45 @@
-import { AppointmentRequestDto, AppointmentResponseDto } from "@/types";
-import { api } from "@/lib/api/axios-config";
+import { AppointmentRequestDto, AppointmentResponseDto } from '@/types';
+import { api } from '@/lib/api/axios-config';
 
 export const appointmentApi = {
   create: async (data: AppointmentRequestDto) => {
-    const response = await api.post<AppointmentResponseDto>("/appointments", data);
-    return response.data;
+    return api<AppointmentResponseDto>('/api/appointments', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
   },
 
   reschedule: async (id: string, start: string, end: string) => {
-    const response = await api.post<AppointmentResponseDto>(
-      `/appointments/${id}/reschedule`,
-      null,
-      { params: { start, end } }
+    const query = new URLSearchParams({ start, end });
+    return api<AppointmentResponseDto>(
+      `/api/appointments/${id}/reschedule?${query.toString()}`,
+      {
+        method: 'POST',
+      }
     );
-    return response.data;
   },
 
-  cancel: async (id: string, cancelledBy?: string) => {
-    await api.post(`/appointments/${id}/cancel`, null, {
-      params: { cancelledBy },
-    });
+  cancel: async (id: string, cancelledBy?: string | number) => {
+    const params = new URLSearchParams();
+    if (cancelledBy) {
+      params.set('cancelledBy', String(cancelledBy));
+    }
+
+    const path = params.size
+      ? `/api/appointments/${id}/cancel?${params.toString()}`
+      : `/api/appointments/${id}/cancel`;
+
+    await api<void>(path, { method: 'POST' });
   },
 
-  listByCustomer: async (customerId: string) => {
-    const response = await api.get<AppointmentResponseDto[]>(
-      `/appointments/customer/${customerId}`
+  listByCustomer: async (customerId: string | number) => {
+    return api<AppointmentResponseDto[]>(
+      `/api/appointments/customer/${customerId}`
     );
-    return response.data;
   },
 
   checkAvailability: async (start: string, end: string) => {
-    const response = await api.get<boolean>("/appointments/availability", {
-      params: { start, end },
-    });
-    return response.data;
+    const query = new URLSearchParams({ start, end });
+    return api<boolean>(`/api/appointments/availability?${query.toString()}`);
   },
-}
+};

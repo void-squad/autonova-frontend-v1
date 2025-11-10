@@ -4,6 +4,16 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Content Security Policy for Google OAuth2 -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; 
+                 script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com https://apis.google.com; 
+                 style-src 'self' 'unsafe-inline' https://accounts.google.com; 
+                 img-src 'self' data: https: blob:; 
+                 font-src 'self' data:; 
+                 connect-src 'self' http://localhost:8080 http://localhost:8081 https://accounts.google.com https://oauth2.googleapis.com; 
+                 frame-src 'self' https://accounts.google.com;">
+
   <title>Autonova</title>
   <link id="favicon" rel="icon" type="image/png" href="/placeholder.svg" />
 </head>

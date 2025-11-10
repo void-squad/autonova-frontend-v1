@@ -10,21 +10,26 @@ const STATUS_META: Record<
     className?: string;
   }
 > = {
-  requested: {
-    label: "Requested",
+  pending: {
+    label: "Pending review",
     variant: "secondary",
-  },
-  quoted: {
-    label: "Quoted",
-    variant: "default",
   },
   approved: {
     label: "Approved",
     variant: "default",
-    className: "bg-emerald-600 text-white hover:bg-emerald-600/90",
   },
-  rejected: {
-    label: "Rejected",
+  in_progress: {
+    label: "In progress",
+    variant: "default",
+  },
+  completed: {
+    label: "Completed",
+    variant: "outline",
+    className:
+      "border-emerald-500 bg-emerald-500/10 text-emerald-600 dark:border-emerald-400 dark:bg-emerald-400/20 dark:text-emerald-100",
+  },
+  cancelled: {
+    label: "Cancelled",
     variant: "destructive",
   },
 };

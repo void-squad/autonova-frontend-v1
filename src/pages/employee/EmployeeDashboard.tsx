@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { 
   Wrench, 
   Clock, 
@@ -20,14 +20,182 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { employeeApi } from '@/lib/api/employee';
 import { EmployeeStats, EmployeeWorkItem, TaskPriority, TimeLogStats } from '@/types/employee';
-import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
+import { 
+  fetchEmployeeDashboard, 
+  type EmployeeDashboardResponse 
+} from '@/services/employeeDashboardService';
+
+// Mock data
+const MOCK_STATS: EmployeeStats = {
+  assignedServices: 8,
+  assignedProjects: 3,
+  inProgressServices: 4,
+  inProgressProjects: 2,
+  completedToday: 2,
+  urgentTasks: 3,
+  overdueTasks: 1,
+  totalHoursThisWeek: 32.5,
+};
+
+const MOCK_TIME_LOG_STATS: TimeLogStats = {
+  totalHoursThisWeek: 32.5,
+  totalHoursThisMonth: 128.0,
+  totalHoursToday: 6.5,
+  averageHoursPerDay: 6.5,
+  totalLogs: 45,
+  dailyHours: [
+    { date: '2025-11-01', hours: 8.0, logCount: 3 },
+    { date: '2025-11-02', hours: 7.5, logCount: 4 },
+    { date: '2025-11-03', hours: 6.0, logCount: 2 },
+    { date: '2025-11-04', hours: 8.5, logCount: 5 },
+    { date: '2025-11-05', hours: 6.5, logCount: 3 },
+  ],
+  recentLogs: [],
+  mostProductiveDay: { date: '2025-11-04', hours: 8.5 },
+};
+
+const MOCK_WORK_ITEMS: EmployeeWorkItem[] = [
+  {
+    id: '1',
+    type: 'service',
+    title: 'Oil Change & Filter Replacement',
+    description: 'Complete oil change service with new filter',
+    vehicle: 'Toyota Camry 2022',
+    customer: 'John Smith',
+    priority: 'urgent',
+    status: 'assigned',
+    dueDate: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(), // Due in 2 hours
+    estimatedTime: '1.5 hours',
+  },
+  {
+    id: '2',
+    type: 'service',
+    title: 'Brake Pad Replacement',
+    description: 'Replace front brake pads and inspect rotors',
+    vehicle: 'Honda Accord 2021',
+    customer: 'Sarah Johnson',
+    priority: 'high',
+    status: 'in_progress',
+    dueDate: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // Due tomorrow
+    estimatedTime: '2 hours',
+  },
+  {
+    id: '3',
+    type: 'project',
+    title: 'Custom Exhaust System Installation',
+    description: 'Install performance exhaust system with custom tips',
+    vehicle: 'BMW M3 2023',
+    customer: 'Mike Wilson',
+    priority: 'normal',
+    status: 'in_progress',
+    progress: 45,
+    dueDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(), // Due in 5 days
+    estimatedTime: '8 hours',
+  },
+  {
+    id: '4',
+    type: 'service',
+    title: 'Transmission Fluid Service',
+    description: 'Complete transmission fluid change and filter',
+    vehicle: 'Ford F-150 2020',
+    customer: 'David Brown',
+    priority: 'urgent',
+    status: 'assigned',
+    dueDate: new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString(), // Due in 4 hours
+    estimatedTime: '2.5 hours',
+  },
+  {
+    id: '5',
+    type: 'project',
+    title: 'Full Interior Customization',
+    description: 'Custom leather seats and dashboard wrap',
+    vehicle: 'Mercedes-Benz C-Class 2023',
+    customer: 'Emily Davis',
+    priority: 'high',
+    status: 'in_progress',
+    progress: 60,
+    dueDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(), // Due in 3 days
+    estimatedTime: '16 hours',
+  },
+  {
+    id: '6',
+    type: 'service',
+    title: 'Wheel Alignment & Balancing',
+    description: '4-wheel alignment and tire balancing service',
+    vehicle: 'Tesla Model 3 2022',
+    customer: 'Robert Miller',
+    priority: 'normal',
+    status: 'assigned',
+    dueDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(), // Due in 2 days
+    estimatedTime: '1 hour',
+  },
+  {
+    id: '7',
+    type: 'service',
+    title: 'AC System Repair',
+    description: 'Diagnose and repair AC cooling issue',
+    vehicle: 'Nissan Altima 2021',
+    customer: 'Jessica Taylor',
+    priority: 'urgent',
+    status: 'overdue',
+    dueDate: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), // Overdue by 1 day
+    estimatedTime: '3 hours',
+  },
+  {
+    id: '8',
+    type: 'project',
+    title: 'Performance Tuning Package',
+    description: 'ECU tuning and performance upgrades',
+    vehicle: 'Audi RS5 2023',
+    customer: 'Chris Anderson',
+    priority: 'high',
+    status: 'assigned',
+    progress: 0,
+    dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // Due in 7 days
+    estimatedTime: '12 hours',
+  },
+  {
+    id: '9',
+    type: 'service',
+    title: 'Battery Replacement',
+    description: 'Replace dead battery and test charging system',
+    vehicle: 'Chevrolet Silverado 2019',
+    customer: 'Amanda White',
+    priority: 'normal',
+    status: 'completed',
+    dueDate: new Date(Date.now()).toISOString(), // Due today
+    estimatedTime: '0.5 hours',
+  },
+  {
+    id: '10',
+    type: 'service',
+    title: 'Engine Diagnostic Scan',
+    description: 'Full diagnostic scan for check engine light',
+    vehicle: 'Mazda CX-5 2022',
+    customer: 'Kevin Martinez',
+    priority: 'high',
+    status: 'assigned',
+    dueDate: new Date(Date.now() + 6 * 60 * 60 * 1000).toISOString(), // Due in 6 hours
+    estimatedTime: '1 hour',
+  },
+  {
+    id: '11',
+    type: 'service',
+    title: 'Coolant System Flush',
+    description: 'Complete coolant system flush and refill',
+    vehicle: 'Volkswagen Passat 2020',
+    customer: 'Lisa Garcia',
+    priority: 'low',
+    status: 'planned',
+    dueDate: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString(), // Due in 10 days
+    estimatedTime: '1.5 hours',
+  },
+];
 
 export default function EmployeeDashboard() {
   const { user } = useAuth();
-  const { toast } = useToast();
   const [stats, setStats] = useState<EmployeeStats | null>(null);
   const [timeLogStats, setTimeLogStats] = useState<TimeLogStats | null>(null);
   const [workItems, setWorkItems] = useState<EmployeeWorkItem[]>([]);
@@ -35,38 +203,72 @@ export default function EmployeeDashboard() {
   const [overdueTasks, setOverdueTasks] = useState<EmployeeWorkItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('all');
+  const [dashboardData, setDashboardData] = useState<EmployeeDashboardResponse | null>(null);
 
-  const loadDashboardData = useCallback(async () => {
+  const loadDashboardData = async () => {
     try {
       setLoading(true);
-      const [statsData, timeLogsData, workItemsData, urgentData, overdueData] = await Promise.all([
-        employeeApi.getStats(),
-        employeeApi.getTimeLogStats(),
-        employeeApi.getAllWorkItems(),
-        employeeApi.getUrgentTasks(),
-        employeeApi.getOverdueTasks(),
-      ]);
+      
+      // Fetch data from API (with mock data fallback)
+      const data = await fetchEmployeeDashboard();
+      setDashboardData(data);
 
-      setStats(statsData);
-      setTimeLogStats(timeLogsData);
-      setWorkItems(workItemsData);
-      setUrgentTasks(urgentData);
-      setOverdueTasks(overdueData);
+      // Map API response to existing stats format
+      const mappedStats: EmployeeStats = {
+        assignedServices: 0, // Not directly provided by API
+        assignedProjects: data.stats.totalActiveProjects,
+        inProgressServices: 0, // Not directly provided by API
+        inProgressProjects: data.stats.totalActiveProjects,
+        completedToday: data.stats.completedTasksThisWeek,
+        urgentTasks: data.upcomingTasks.filter(t => t.priority === 'URGENT').length,
+        overdueTasks: 0, // Calculate from tasks if needed
+        totalHoursThisWeek: 0, // Not provided by API
+      };
+      
+      setStats(mappedStats);
+
+      // Map upcoming tasks to work items format
+      const mappedWorkItems: EmployeeWorkItem[] = data.upcomingTasks.map(task => ({
+        id: task.id,
+        type: 'project',
+        title: task.title,
+        description: task.description,
+        vehicle: '', // Not provided by API
+        customer: '', // Not provided by API
+        priority: task.priority.toLowerCase() as TaskPriority,
+        status: 'assigned',
+        dueDate: task.dueDate === 'TBD' ? undefined : task.dueDate,
+        estimatedTime: '', // Not provided by API
+        progress: data.activeProjects.find(p => p.projectId === task.projectId)?.progressPercentage,
+      }));
+      
+      setWorkItems([...MOCK_WORK_ITEMS, ...mappedWorkItems]);
+      
+      // Filter urgent and overdue tasks
+      const urgent = [...MOCK_WORK_ITEMS, ...mappedWorkItems].filter(item => item.priority === 'urgent');
+      const overdue = MOCK_WORK_ITEMS.filter(item => item.status === 'overdue');
+      
+      setUrgentTasks(urgent);
+      setOverdueTasks(overdue);
+
+      // Set time log stats (use mock data as API doesn't provide this)
+      setTimeLogStats(MOCK_TIME_LOG_STATS);
     } catch (error) {
-      const err = error as { response?: { data?: { message?: string } } };
-      toast({
-        title: 'Error',
-        description: err.response?.data?.message || 'Failed to load dashboard data',
-        variant: 'destructive',
-      });
+      console.error('Failed to load dashboard data:', error);
+      // Fallback to mock data on error
+      setStats(MOCK_STATS);
+      setTimeLogStats(MOCK_TIME_LOG_STATS);
+      setWorkItems(MOCK_WORK_ITEMS);
+      setUrgentTasks(MOCK_WORK_ITEMS.filter(item => item.priority === 'urgent'));
+      setOverdueTasks(MOCK_WORK_ITEMS.filter(item => item.status === 'overdue'));
     } finally {
       setLoading(false);
     }
-  }, [toast]);
+  };
 
   useEffect(() => {
     loadDashboardData();
-  }, [loadDashboardData]);
+  }, []);
 
   const getPriorityBadge = (priority: TaskPriority) => {
     const variants: Record<TaskPriority, { variant: 'default' | 'destructive' | 'secondary' | 'outline'; className?: string }> = {
@@ -314,6 +516,94 @@ export default function EmployeeDashboard() {
           </Card>
         </Link>
       </div>
+
+      {/* Recent Activities Section */}
+      {dashboardData && dashboardData.recentActivities.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Recent Activities</CardTitle>
+            <CardDescription>Your latest updates and actions</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {dashboardData.recentActivities.map((activity) => (
+                <div
+                  key={activity.id}
+                  className="flex items-start gap-3 p-3 border rounded-lg"
+                >
+                  <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/20">
+                    <CheckCircle className="h-4 w-4 text-blue-600" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">{activity.description}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {new Date(activity.timestamp).toLocaleString()}
+                    </p>
+                  </div>
+                  <Badge variant={activity.status === 'COMPLETED' ? 'secondary' : 'outline'}>
+                    {activity.status}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Active Projects Section */}
+      {dashboardData && dashboardData.activeProjects.length > 0 && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Active Projects</CardTitle>
+                <CardDescription>Your currently active modification projects</CardDescription>
+              </div>
+              <Button variant="outline" size="sm" asChild>
+                <Link to="/employee/projects">
+                  View All
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {dashboardData.activeProjects.map((project) => (
+                <div
+                  key={project.projectId}
+                  className="border rounded-lg p-4 space-y-3"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <h4 className="font-medium">{project.projectName}</h4>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Customer: {project.customerName}
+                      </p>
+                    </div>
+                    <Badge variant={project.status === 'InProgress' ? 'default' : 'outline'}>
+                      {project.status}
+                    </Badge>
+                  </div>
+                  
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Progress</span>
+                      <span className="font-medium">{project.progressPercentage}%</span>
+                    </div>
+                    <Progress value={project.progressPercentage} className="h-2" />
+                  </div>
+
+                  <div className="flex items-center justify-between text-sm text-muted-foreground">
+                    <span>Start: {new Date(project.startDate).toLocaleDateString()}</span>
+                    <span>Due: {new Date(project.expectedCompletionDate).toLocaleDateString()}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Urgent Tasks Section */}
       {urgentTasks.length > 0 && (

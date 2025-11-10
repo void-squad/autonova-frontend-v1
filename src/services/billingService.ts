@@ -2,7 +2,21 @@ import axios, { AxiosResponseHeaders, RawAxiosResponseHeaders } from 'axios';
 import { BillingInvoice, InvoiceListQueryParams, InvoiceListResponse } from '@/types';
 import { getAccessToken } from '@/lib/auth';
 
-const BILLING_API_URL = import.meta.env.VITE_BILLING_API_URL || 'http://localhost:8095/api';
+const sanitizeBaseUrl = (url: string) => url.replace(/\/+$/, '');
+const ensureApiPrefix = (url: string) => {
+  const normalized = sanitizeBaseUrl(url);
+  return /\/api(\/|$)/i.test(normalized) ? normalized : `${normalized}/api`;
+};
+
+const BILLING_API_URL = (() => {
+  const explicit = import.meta.env.VITE_BILLING_API_URL;
+  if (explicit) return sanitizeBaseUrl(explicit);
+
+  const gateway = import.meta.env.VITE_API_BASE_URL;
+  const base = gateway ? ensureApiPrefix(gateway) : ensureApiPrefix('http://localhost:8080');
+
+  return base;
+})();
 
 const billingClient = axios.create({
   baseURL: BILLING_API_URL,

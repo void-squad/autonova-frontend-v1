@@ -9,7 +9,7 @@ import { InvoiceFilters } from '@/components/billing/InvoiceFilters';
 import { InvoiceTable } from '@/components/billing/InvoiceTable';
 import { useDebounce } from '@/hooks/use-debounce';
 import { useInvoices } from '@/hooks/use-invoices';
-import { formatCurrency } from '@/lib/utils';
+import { formatInvoiceAmount } from '@/components/billing/invoice-utils';
 import { useInvoicePdf } from '@/hooks/use-invoice-pdf';
 
 const CustomerBilling = () => {
@@ -94,7 +94,7 @@ const CustomerBilling = () => {
             </div>
             <div className="rounded-md border bg-muted/30 px-3 py-2">
               <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Open exposure</p>
-              <p className="mt-1 text-xl font-semibold">{formatCurrency(openAmount, currency)}</p>
+              <p className="mt-1 text-xl font-semibold">{formatInvoiceAmount(openAmount, currency)}</p>
               <p className="text-xs text-muted-foreground">{openCount} open invoices</p>
             </div>
             <div className="rounded-md border bg-muted/30 px-3 py-2">

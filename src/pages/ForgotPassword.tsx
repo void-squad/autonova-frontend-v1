@@ -32,32 +32,36 @@ export default function ForgotPassword() {
     setLoading(true);
     try {
       const response = await authService.forgotPassword(data.email);
-      
+
       // Check if request was successful before showing success state
       if (response.success !== false) {
         setEmailSent(true);
-        
+
         // Show the message from backend response
         if (response.message) {
           toast.success(response.message);
         } else {
           toast.success('Password reset link sent to your email');
         }
-        
+
         console.log('✅ Forgot password response:', response);
       } else {
         // Backend returned success: false (validation error)
-        const errorMessage = response.message || 'Failed to send reset link. Please try again.';
+        const errorMessage =
+          response.message || 'Failed to send reset link. Please try again.';
         toast.error(errorMessage);
         console.log('⚠️ Validation error:', response);
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('❌ Forgot password error:', error);
-      
-      // Show specific error message from backend if available
-      const errorMessage = error.response?.data?.message || error.message || 'Failed to send reset link. Please try again.';
+
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : 'Failed to send reset link. Please try again.';
+
       toast.error(errorMessage);
-      
+
       // Keep form visible so user can correct the email
       // Don't set emailSent to true
     } finally {
@@ -76,7 +80,7 @@ export default function ForgotPassword() {
           className="object-cover h-full w-full transition-transform duration-700 hover:scale-105"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-background/20 to-transparent transition-opacity duration-500" />
-        
+
         {/* Optional: Add overlay text */}
         <div className="absolute bottom-0 left-0 right-0 p-12 text-white animate-in fade-in slide-in-from-bottom-6 duration-1000 delay-300">
           <h3 className="text-3xl font-bold mb-4 drop-shadow-lg transition-all duration-300 hover:translate-x-2">
@@ -99,11 +103,13 @@ export default function ForgotPassword() {
               </div>
               <h1 className="text-2xl font-bold text-foreground">Autonova</h1>
             </div>
-            
+
             <div className="space-y-2 animate-in fade-in slide-in-from-top-3 duration-700">
-              <h2 className="text-3xl font-bold text-foreground">Forgot Password?</h2>
+              <h2 className="text-3xl font-bold text-foreground">
+                Forgot Password?
+              </h2>
               <p className="text-muted-foreground">
-                {emailSent 
+                {emailSent
                   ? "Check your email for password reset instructions. If you don't see it, check your spam folder."
                   : "Enter the email address associated with your account and we'll send you a link to reset your password."}
               </p>
@@ -112,10 +118,16 @@ export default function ForgotPassword() {
 
           {/* Form or Success Message */}
           {!emailSent ? (
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-200">
+            <form
+              onSubmit={handleSubmit(onSubmit)}
+              className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-200"
+            >
               {/* Email Field */}
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-sm font-medium text-foreground">
+                <Label
+                  htmlFor="email"
+                  className="text-sm font-medium text-foreground"
+                >
                   Email Address
                 </Label>
                 <div className="relative">
@@ -132,7 +144,9 @@ export default function ForgotPassword() {
                   />
                 </div>
                 {errors.email && (
-                  <p className="text-sm text-destructive animate-in fade-in slide-in-from-top-1 duration-300">{errors.email.message}</p>
+                  <p className="text-sm text-destructive animate-in fade-in slide-in-from-top-1 duration-300">
+                    {errors.email.message}
+                  </p>
                 )}
               </div>
 
@@ -164,15 +178,17 @@ export default function ForgotPassword() {
                   Check Your Email
                 </h3>
                 <p className="text-sm text-muted-foreground text-center">
-                  If an account exists with this email, you will receive password reset instructions shortly.
+                  If an account exists with this email, you will receive
+                  password reset instructions shortly.
                 </p>
                 <div className="pt-2 border-t border-green-200 dark:border-green-800">
                   <p className="text-xs text-muted-foreground text-center">
-                    💡 <strong>Tip:</strong> Check your spam folder if you don't see the email in your inbox
+                    💡 <strong>Tip:</strong> Check your spam folder if you don't
+                    see the email in your inbox
                   </p>
                 </div>
               </div>
-              
+
               <Button
                 onClick={() => setEmailSent(false)}
                 variant="outline"

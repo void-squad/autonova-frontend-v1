@@ -20,10 +20,15 @@ interface DashboardLayoutProps {
   sidebar: ReactNode;
 }
 
-export default function DashboardLayout({ sidebar, children }: DashboardLayoutProps) {
+export default function DashboardLayout({
+  sidebar,
+  children,
+}: DashboardLayoutProps) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  const displayName = user?.name || user?.userName || 'User';
 
   const handleLogout = async () => {
     await logout();
@@ -70,14 +75,21 @@ export default function DashboardLayout({ sidebar, children }: DashboardLayoutPr
               <SheetContent side="left" className="w-64 p-0">
                 <div className="flex h-full flex-col">
                   <div className="flex h-16 items-center border-b px-6">
-                    <Link to="/" className="flex items-center space-x-2" onClick={() => setMobileOpen(false)}>
+                    <Link
+                      to="/"
+                      className="flex items-center space-x-2"
+                      onClick={() => setMobileOpen(false)}
+                    >
                       <div className="flex h-8 w-8 items-center justify-center rounded-lg gradient-hero">
                         <Car className="h-5 w-5 text-white" />
                       </div>
                       <span className="text-xl font-bold">Autonova</span>
                     </Link>
                   </div>
-                  <div className="flex-1 overflow-y-auto p-4" onClick={() => setMobileOpen(false)}>
+                  <div
+                    className="flex-1 overflow-y-auto p-4"
+                    onClick={() => setMobileOpen(false)}
+                  >
                     {sidebar}
                   </div>
                 </div>
@@ -103,11 +115,14 @@ export default function DashboardLayout({ sidebar, children }: DashboardLayoutPr
             {/* User Menu */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-9 w-9 rounded-full">
+                <Button
+                  variant="ghost"
+                  className="relative h-9 w-9 rounded-full"
+                >
                   <Avatar className="h-9 w-9">
-                    <AvatarImage src={user?.avatarUrl} alt={user?.name} />
+                    <AvatarImage src={user?.avatarUrl} alt={displayName} />
                     <AvatarFallback className="gradient-primary text-white">
-                      {user?.name ? getInitials(user.name) : 'U'}
+                      {displayName ? getInitials(displayName) : 'U'}
                     </AvatarFallback>
                   </Avatar>
                 </Button>
@@ -115,8 +130,12 @@ export default function DashboardLayout({ sidebar, children }: DashboardLayoutPr
               <DropdownMenuContent className="w-56" align="end" forceMount>
                 <DropdownMenuLabel className="font-normal">
                   <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium leading-none">{user?.name}</p>
-                    <p className="text-xs leading-none text-muted-foreground">{user?.email}</p>
+                    <p className="text-sm font-medium leading-none">
+                      {displayName}
+                    </p>
+                    <p className="text-xs leading-none text-muted-foreground">
+                      {user?.email}
+                    </p>
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
@@ -127,7 +146,10 @@ export default function DashboardLayout({ sidebar, children }: DashboardLayoutPr
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-destructive">
+                <DropdownMenuItem
+                  onClick={handleLogout}
+                  className="cursor-pointer text-destructive"
+                >
                   <LogOut className="mr-2 h-4 w-4" />
                   Logout
                 </DropdownMenuItem>
