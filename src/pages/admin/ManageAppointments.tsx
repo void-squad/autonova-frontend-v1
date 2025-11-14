@@ -24,16 +24,18 @@ export default function AppointmentManagement() {
         const data = await res.json();
 
         const formatted = data.map(a => ({
-          id: a.id,
-          customer: a.customerName || 'Unknown Customer',
-          vehicle: a.vehicleId || 'Unknown Vehicle',
-          service: a.serviceType,
-          date: new Date(a.startTime).toISOString().split('T')[0],
-          time: new Date(a.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          status: a.status.charAt(0).toUpperCase() + a.status.slice(1).toLowerCase(),
-       
-          created: new Date(a.createdAt).toISOString().split('T')[0],
-        }));
+  id: a.id,
+  customer: a.customerUsername || 'Unknown Customer', // use username
+  // remove customerId entirely
+  vehicle: a.vehicleName || 'Unknown Vehicle', // show vehicle name
+  service: a.serviceType,
+  datetime: new Date(a.startTime).toLocaleString([], { 
+    hour: '2-digit', minute: '2-digit', year: 'numeric', month: 'short', day: 'numeric' 
+  }),
+  status: a.status.charAt(0).toUpperCase() + a.status.slice(1).toLowerCase(),
+  created: new Date(a.createdAt).toISOString().split('T')[0],
+}));
+
 
         setAppointments(formatted);
       } catch (err) {
@@ -200,7 +202,8 @@ export default function AppointmentManagement() {
                   <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Customer</th>
                   <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Vehicle</th>
                   <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Service</th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Date & Time</th>
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Appointment Date & Time</th>
+
                   <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Status</th>
                  
                   <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Actions</th>
@@ -211,14 +214,13 @@ export default function AppointmentManagement() {
                   <tr key={apt.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4">
                       <div className="font-medium">{apt.customer}</div>
-                      <div className="text-sm text-gray-500">ID: {apt.id}</div>
+                      {/* <div className="text-sm text-gray-500">ID: {apt.id}</div> */}
                     </td>
                     <td className="px-6 py-4 text-sm">{apt.vehicle}</td>
                     <td className="px-6 py-4 text-sm">{apt.service}</td>
                     <td className="px-6 py-4">
-                      <div className="text-sm">{apt.date}</div>
-                      <div className="text-sm text-gray-500">{apt.time}</div>
-                    </td>
+  <div className="text-sm">{apt.datetime}</div>
+</td>
                     <td className="px-6 py-4">
                       <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(apt.status)}`}>{apt.status}</span>
                     </td>
