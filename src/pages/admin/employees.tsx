@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Users,
@@ -64,8 +64,187 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
-import { adminApi } from '@/lib/api/admin';
 import { Employee, EmployeeStats, CreateEmployeeDto, UpdateEmployeeDto } from '@/types/admin';
+
+// Mock data
+const MOCK_STATS: EmployeeStats = {
+  totalEmployees: 12,
+  activeEmployees: 9,
+  onLeave: 2,
+  averageWorkload: 68,
+  overloadedEmployees: 1,
+};
+
+const MOCK_EMPLOYEES: Employee[] = [
+  {
+    id: '1',
+    userName: 'John Martinez',
+    email: 'john.martinez@autonova.com',
+    contactOne: '+1 (555) 123-4567',
+    contactTwo: '+1 (555) 123-4568',
+    address: '123 Main St, Los Angeles, CA 90001',
+    hireDate: '2023-01-15',
+    specialization: 'Engine Specialist',
+    status: 'active',
+    role: 'EMPLOYEE',
+    createdAt: '2023-01-15T08:00:00Z',
+    updatedAt: '2023-01-15T08:00:00Z',
+  },
+  {
+    id: '2',
+    userName: 'Sarah Chen',
+    email: 'sarah.chen@autonova.com',
+    contactOne: '+1 (555) 234-5678',
+    contactTwo: '',
+    address: '456 Oak Ave, San Francisco, CA 94102',
+    hireDate: '2023-03-20',
+    specialization: 'Transmission Expert',
+    status: 'active',
+    role: 'EMPLOYEE',
+    createdAt: '2023-03-20T08:00:00Z',
+    updatedAt: '2023-03-20T08:00:00Z',
+  },
+  {
+    id: '3',
+    userName: 'Michael Johnson',
+    email: 'michael.johnson@autonova.com',
+    contactOne: '+1 (555) 345-6789',
+    contactTwo: '+1 (555) 345-6790',
+    address: '789 Pine Rd, Seattle, WA 98101',
+    hireDate: '2022-11-10',
+    specialization: 'Electrical Systems',
+    status: 'active',
+    role: 'EMPLOYEE',
+    createdAt: '2022-11-10T08:00:00Z',
+    updatedAt: '2022-11-10T08:00:00Z',
+  },
+  {
+    id: '4',
+    userName: 'Emily Rodriguez',
+    email: 'emily.rodriguez@autonova.com',
+    contactOne: '+1 (555) 456-7890',
+    contactTwo: '',
+    address: '321 Elm St, Portland, OR 97201',
+    hireDate: '2023-05-12',
+    specialization: 'Body & Paint',
+    status: 'on_leave',
+    role: 'EMPLOYEE',
+    createdAt: '2023-05-12T08:00:00Z',
+    updatedAt: '2025-11-01T08:00:00Z',
+  },
+  {
+    id: '5',
+    userName: 'David Kim',
+    email: 'david.kim@autonova.com',
+    contactOne: '+1 (555) 567-8901',
+    contactTwo: '+1 (555) 567-8902',
+    address: '654 Maple Dr, Austin, TX 78701',
+    hireDate: '2022-08-05',
+    specialization: 'Brake Systems',
+    status: 'active',
+    role: 'EMPLOYEE',
+    createdAt: '2022-08-05T08:00:00Z',
+    updatedAt: '2022-08-05T08:00:00Z',
+  },
+  {
+    id: '6',
+    userName: 'Lisa Anderson',
+    email: 'lisa.anderson@autonova.com',
+    contactOne: '+1 (555) 678-9012',
+    contactTwo: '',
+    address: '987 Birch Ln, Denver, CO 80202',
+    hireDate: '2023-02-28',
+    specialization: 'Diagnostics',
+    status: 'active',
+    role: 'EMPLOYEE',
+    createdAt: '2023-02-28T08:00:00Z',
+    updatedAt: '2023-02-28T08:00:00Z',
+  },
+  {
+    id: '7',
+    userName: 'Robert Taylor',
+    email: 'robert.taylor@autonova.com',
+    contactOne: '+1 (555) 789-0123',
+    contactTwo: '+1 (555) 789-0124',
+    address: '147 Cedar St, Phoenix, AZ 85001',
+    hireDate: '2022-06-15',
+    specialization: 'HVAC Systems',
+    status: 'active',
+    role: 'EMPLOYEE',
+    createdAt: '2022-06-15T08:00:00Z',
+    updatedAt: '2022-06-15T08:00:00Z',
+  },
+  {
+    id: '8',
+    userName: 'Jennifer White',
+    email: 'jennifer.white@autonova.com',
+    contactOne: '+1 (555) 890-1234',
+    contactTwo: '',
+    address: '258 Spruce Ave, Miami, FL 33101',
+    hireDate: '2023-04-10',
+    specialization: 'Interior & Upholstery',
+    status: 'on_leave',
+    role: 'EMPLOYEE',
+    createdAt: '2023-04-10T08:00:00Z',
+    updatedAt: '2025-10-28T08:00:00Z',
+  },
+  {
+    id: '9',
+    userName: 'James Brown',
+    email: 'james.brown@autonova.com',
+    contactOne: '+1 (555) 901-2345',
+    contactTwo: '+1 (555) 901-2346',
+    address: '369 Willow Rd, Boston, MA 02101',
+    hireDate: '2022-09-22',
+    specialization: 'Suspension & Alignment',
+    status: 'active',
+    role: 'EMPLOYEE',
+    createdAt: '2022-09-22T08:00:00Z',
+    updatedAt: '2022-09-22T08:00:00Z',
+  },
+  {
+    id: '10',
+    userName: 'Maria Garcia',
+    email: 'maria.garcia@autonova.com',
+    contactOne: '+1 (555) 012-3456',
+    contactTwo: '',
+    address: '741 Ash Blvd, Chicago, IL 60601',
+    hireDate: '2023-07-01',
+    specialization: 'Performance Tuning',
+    status: 'active',
+    role: 'EMPLOYEE',
+    createdAt: '2023-07-01T08:00:00Z',
+    updatedAt: '2023-07-01T08:00:00Z',
+  },
+  {
+    id: '11',
+    userName: 'Thomas Wilson',
+    email: 'thomas.wilson@autonova.com',
+    contactOne: '+1 (555) 112-3456',
+    contactTwo: '+1 (555) 112-3457',
+    address: '852 Poplar St, New York, NY 10001',
+    hireDate: '2022-12-08',
+    specialization: 'Exhaust Systems',
+    status: 'inactive',
+    role: 'EMPLOYEE',
+    createdAt: '2022-12-08T08:00:00Z',
+    updatedAt: '2025-10-15T08:00:00Z',
+  },
+  {
+    id: '12',
+    userName: 'Amanda Davis',
+    email: 'amanda.davis@autonova.com',
+    contactOne: '+1 (555) 223-4567',
+    contactTwo: '',
+    address: '963 Hickory Ln, Dallas, TX 75201',
+    hireDate: '2023-06-18',
+    specialization: 'Wheel & Tire Services',
+    status: 'active',
+    role: 'EMPLOYEE',
+    createdAt: '2023-06-18T08:00:00Z',
+    updatedAt: '2023-06-18T08:00:00Z',
+  },
+];
 
 export default function AdminEmployees() {
   const { toast } = useToast();
@@ -88,30 +267,32 @@ export default function AdminEmployees() {
     specialization: '',
   });
 
-  const loadData = useCallback(async () => {
+  const loadData = async () => {
     try {
       setLoading(true);
-      const [employeesData, statsData] = await Promise.all([
-        adminApi.getAllEmployees(),
-        adminApi.getEmployeeStats(),
-      ]);
-      setEmployees(employeesData);
-      setStats(statsData);
+      
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 800));
+      
+      // Use mock data
+      setEmployees(MOCK_EMPLOYEES);
+      setStats(MOCK_STATS);
     } catch (error) {
-      const err = error as { response?: { data?: { message?: string } } };
+      console.error('Failed to load employee data:', error);
       toast({
         title: 'Error',
-        description: err.response?.data?.message || 'Failed to load employee data',
+        description: 'Failed to load employee data',
         variant: 'destructive',
       });
     } finally {
       setLoading(false);
     }
-  }, [toast]);
+  };
 
   useEffect(() => {
     loadData();
-  }, [loadData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const filterEmployees = () => {
     let filtered = employees;
@@ -142,7 +323,27 @@ export default function AdminEmployees() {
     }
 
     try {
-      await adminApi.createEmployee(formData);
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Add new employee to mock data
+      const newEmployee: Employee = {
+        id: `${employees.length + 1}`,
+        userName: formData.userName,
+        email: formData.email,
+        contactOne: formData.contactOne,
+        contactTwo: formData.contactTwo || '',
+        address: formData.address || '',
+        hireDate: new Date().toISOString().split('T')[0],
+        specialization: formData.specialization || '',
+        status: 'active',
+        role: 'EMPLOYEE',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      
+      setEmployees([...employees, newEmployee]);
+      
       toast({
         title: 'Success',
         description: 'Employee created successfully',
@@ -157,12 +358,10 @@ export default function AdminEmployees() {
         address: '',
         specialization: '',
       });
-      loadData();
     } catch (error) {
-      const err = error as { response?: { data?: { message?: string } } };
       toast({
         title: 'Error',
-        description: err.response?.data?.message || 'Failed to create employee',
+        description: 'Failed to create employee',
         variant: 'destructive',
       });
     }
@@ -181,19 +380,26 @@ export default function AdminEmployees() {
     };
 
     try {
-      await adminApi.updateEmployee(selectedEmployee.id, updateData);
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Update employee in mock data
+      setEmployees(employees.map(emp => 
+        emp.id === selectedEmployee.id 
+          ? { ...emp, ...updateData, updatedAt: new Date().toISOString() }
+          : emp
+      ));
+      
       toast({
         title: 'Success',
         description: 'Employee updated successfully',
       });
       setShowEditDialog(false);
       setSelectedEmployee(null);
-      loadData();
     } catch (error) {
-      const err = error as { response?: { data?: { message?: string } } };
       toast({
         title: 'Error',
-        description: err.response?.data?.message || 'Failed to update employee',
+        description: 'Failed to update employee',
         variant: 'destructive',
       });
     }
@@ -203,19 +409,22 @@ export default function AdminEmployees() {
     if (!selectedEmployee) return;
 
     try {
-      await adminApi.deleteEmployee(selectedEmployee.id);
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Remove employee from mock data
+      setEmployees(employees.filter(emp => emp.id !== selectedEmployee.id));
+      
       toast({
         title: 'Success',
         description: 'Employee deleted successfully',
       });
       setShowDeleteDialog(false);
       setSelectedEmployee(null);
-      loadData();
     } catch (error) {
-      const err = error as { response?: { data?: { message?: string } } };
       toast({
         title: 'Error',
-        description: err.response?.data?.message || 'Failed to delete employee',
+        description: 'Failed to delete employee',
         variant: 'destructive',
       });
     }
@@ -223,17 +432,24 @@ export default function AdminEmployees() {
 
   const handleStatusChange = async (employee: Employee, newStatus: 'active' | 'inactive' | 'on_leave') => {
     try {
-      await adminApi.updateEmployee(employee.id, { status: newStatus });
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Update employee status in mock data
+      setEmployees(employees.map(emp => 
+        emp.id === employee.id 
+          ? { ...emp, status: newStatus, updatedAt: new Date().toISOString() }
+          : emp
+      ));
+      
       toast({
         title: 'Success',
         description: `Employee status updated to ${newStatus}`,
       });
-      loadData();
     } catch (error) {
-      const err = error as { response?: { data?: { message?: string } } };
       toast({
         title: 'Error',
-        description: err.response?.data?.message || 'Failed to update status',
+        description: 'Failed to update status',
         variant: 'destructive',
       });
     }

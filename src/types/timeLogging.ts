@@ -9,6 +9,7 @@ export interface TimeLogResponse {
   employeeName: string;
   hours: number;
   note?: string;
+  approvalStatus: "PENDING" | "APPROVED" | "REJECTED";
   loggedAt: string; // ISO 8601 format
 }
 
@@ -133,6 +134,7 @@ export interface TimeLog {
   employeeName: string;
   hours: number;
   note?: string;
+  approvalStatus: "PENDING" | "APPROVED" | "REJECTED";
   loggedAt: string; // ISO 8601 format
 }
 

@@ -80,9 +80,8 @@ export default function CustomerProjectProgressPage() {
   if (!projectId) return <div>Project id missing</div>;
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-6">
+    <div className="max-w-10xl mx-auto px-2 py-6">
       <div className="space-y-6">
-        <ProjectProgressBar status={progress?.status ?? project?.status ?? 'unknown'} percent={progress?.progressPercentage ?? project?.progressPct} />
 
         {/* Project details */}
         <Card>
@@ -92,6 +91,7 @@ export default function CustomerProjectProgressPage() {
               <Badge className="uppercase">{project?.status ?? progress?.status ?? 'unknown'}</Badge>
             </div>
             {project?.description && <CardDescription>{project.description}</CardDescription>}
+
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -103,9 +103,23 @@ export default function CustomerProjectProgressPage() {
                 <div className="text-sm text-muted-foreground">Start date</div>
                 <div className="font-medium">{project?.startDate ? new Date(project.startDate).toLocaleDateString() : '-'}</div>
               </div>
+              <div>
+                <div className="text-sm text-muted-foreground">End date</div>
+                <div className="font-medium">{(project as any)?.endDate ? new Date((project as any).endDate).toLocaleDateString() : '-'}</div>
+              </div>
+              <div>
+                <div className="text-sm text-muted-foreground">Customer</div>
+                <div className="font-medium">{(project as any)?.customerName ?? (project as any)?.customer ?? '-'}</div>
+              </div>
+              <div>
+                <div className="text-sm text-muted-foreground">Budget</div>
+                <div className="font-medium">{typeof (project as any)?.budget === 'number' ? `$${((project as any).budget).toLocaleString()}` : ((project as any)?.budget ?? '-')}</div>
+              </div>
             </div>
           </CardContent>
         </Card>
+        
+        <ProjectProgressBar status={progress?.status ?? project?.status ?? 'unknown'} percent={progress?.progressPercentage ?? project?.progressPct} />
 
         <ProgressTimeline messages={progress?.messages ?? []} />
       </div>

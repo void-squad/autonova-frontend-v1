@@ -78,6 +78,7 @@ export interface Vehicle {
 export type VehicleInput = Omit<Vehicle, 'id'>;
 
 export * from './appointment';
+export * from './billing';
 
 export type ProjectStatus =
   | 'planned'

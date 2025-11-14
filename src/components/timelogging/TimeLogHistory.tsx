@@ -35,6 +35,30 @@ export const TimeLogHistory = ({
 
   const totalHours = timeLogs.reduce((sum, log) => sum + log.hours, 0);
 
+  const getStatusBadge = (status: "PENDING" | "APPROVED" | "REJECTED") => {
+    switch (status) {
+      case "APPROVED":
+        return (
+          <Badge className="bg-green-100 text-green-800 border-green-300">
+            Approved
+          </Badge>
+        );
+      case "REJECTED":
+        return (
+          <Badge className="bg-red-100 text-red-800 border-red-300">
+            Rejected
+          </Badge>
+        );
+      case "PENDING":
+      default:
+        return (
+          <Badge className="bg-yellow-100 text-yellow-800 border-yellow-300">
+            Pending
+          </Badge>
+        );
+    }
+  };
+
   return (
     <Card className="p-6">
       <div className="flex items-center justify-between mb-6">
@@ -63,6 +87,7 @@ export const TimeLogHistory = ({
                 <TableHead>Project</TableHead>
                 <TableHead>Task</TableHead>
                 <TableHead className="text-right">Hours</TableHead>
+                <TableHead>Status</TableHead>
                 <TableHead>Notes</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -78,6 +103,7 @@ export const TimeLogHistory = ({
                   <TableCell className="text-right font-semibold">
                     {log.hours.toFixed(2)}
                   </TableCell>
+                  <TableCell>{getStatusBadge(log.approvalStatus)}</TableCell>
                   <TableCell className="max-w-xs truncate">
                     {log.note || "-"}
                   </TableCell>

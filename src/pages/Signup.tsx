@@ -75,7 +75,6 @@ export default function Signup() {
     resolver: zodResolver(signupSchema),
     defaultValues: {
       termsAccepted: false,
-      role: 'Customer', // Default role
     },
   });
 
@@ -96,24 +95,17 @@ export default function Signup() {
   const onSubmit = async (data: SignupFormData) => {
     setLoading(true);
     try {
-      // Map role from form value to backend expected value
-      const roleMap: Record<string, 'CUSTOMER' | 'EMPLOYEE' | 'ADMIN'> = {
-        Customer: 'CUSTOMER',
-        Employee: 'EMPLOYEE',
-        Admin: 'ADMIN',
-      };
-
-      const response = await signup({
+      // All new users are created as CUSTOMER by default
+      // Admins can change roles later in User Management
+      await signup({
         userName: data.userName,
         email: data.email,
         password: data.password,
         contactNumber: data.contactNumber,
-        role: roleMap[data.role],
+        role: 'CUSTOMER' // Always CUSTOMER for self-signup
       });
 
-      toast.success(
-        response.message ?? 'Account created successfully! Please login.'
-      );
+      toast.success('Account created successfully! Please login.');
       navigate('/login');
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Signup failed';
@@ -248,45 +240,6 @@ export default function Signup() {
                   {errors.contactNumber && (
                     <p className="text-sm text-destructive animate-in fade-in slide-in-from-top-1 duration-300">
                       {errors.contactNumber.message}
-                    </p>
-                  )}
-                </div>
-
-                {/* Role Field */}
-                <div className="space-y-2">
-                  <Label
-                    htmlFor="role"
-                    className="text-sm font-medium text-foreground"
-                  >
-                    Role
-                  </Label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
-                      <Shield className="h-5 w-5 text-muted-foreground" />
-                    </div>
-                    <Select
-                      value={watch('role')}
-                      onValueChange={(value) =>
-                        setValue(
-                          'role',
-                          value as 'Customer' | 'Employee' | 'Admin'
-                        )
-                      }
-                      disabled={loading}
-                    >
-                      <SelectTrigger className="pl-10 h-12">
-                        <SelectValue placeholder="Select your role" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Customer">Customer</SelectItem>
-                        <SelectItem value="Employee">Employee</SelectItem>
-                        <SelectItem value="Admin">Admin</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  {errors.role && (
-                    <p className="text-sm text-destructive animate-in fade-in slide-in-from-top-1 duration-300">
-                      {errors.role.message}
                     </p>
                   )}
                 </div>
