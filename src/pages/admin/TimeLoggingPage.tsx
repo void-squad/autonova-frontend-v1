@@ -187,15 +187,18 @@ export const TimeLoggingPage = () => {
     }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
+  const formatDateOnly = (dateString: string) =>
+    new Date(dateString).toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",
       year: "numeric",
+    });
+
+  const formatTimeOnly = (dateString: string) =>
+    new Date(dateString).toLocaleTimeString("en-US", {
       hour: "2-digit",
       minute: "2-digit",
     });
-  };
 
   const getStatusBadge = (status: "PENDING" | "APPROVED" | "REJECTED") => {
     switch (status) {
@@ -412,30 +415,41 @@ export const TimeLoggingPage = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Employee</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Project</TableHead>
-                  <TableHead>Task</TableHead>
-                  <TableHead className="text-right">Hours</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Notes</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead className="w-32">Employee</TableHead>
+                  <TableHead className="w-36">Date</TableHead>
+                  <TableHead className="w-40">Project</TableHead>
+                  <TableHead className="w-32">Task</TableHead>
+                  <TableHead className="w-20 text-right">Hours</TableHead>
+                  <TableHead className="w-24">Status</TableHead>
+                  <TableHead className="w-64">Notes</TableHead>
+                  <TableHead className="w-32 text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredLogs.map((log) => (
                   <TableRow key={log.id}>
-                    <TableCell className="font-medium">
+                    <TableCell className="font-medium w-32">
                       {log.employeeName || "Unknown"}
                     </TableCell>
-                    <TableCell>{formatDate(log.loggedAt)}</TableCell>
-                    <TableCell>{log.projectTitle}</TableCell>
-                    <TableCell>{log.taskName}</TableCell>
-                    <TableCell className="text-right font-semibold">
+                    <TableCell className="w-36">
+                      <div className="flex flex-col">
+                        <span className="whitespace-nowrap">
+                          {formatDateOnly(log.loggedAt)}
+                        </span>
+                        <span className="text-sm text-gray-500">
+                          {formatTimeOnly(log.loggedAt)}
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="w-40">{log.projectTitle}</TableCell>
+                    <TableCell className="w-32">{log.taskName}</TableCell>
+                    <TableCell className="w-20 text-right font-semibold">
                       {log.hours.toFixed(2)}
                     </TableCell>
-                    <TableCell>{getStatusBadge(log.approvalStatus)}</TableCell>
-                    <TableCell className="max-w-xs truncate">
+                    <TableCell className="w-24">
+                      {getStatusBadge(log.approvalStatus)}
+                    </TableCell>
+                    <TableCell className="w-64 whitespace-normal break-words text-sm">
                       {log.note || "-"}
                     </TableCell>
                     <TableCell className="text-right">
