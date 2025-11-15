@@ -128,7 +128,10 @@ export async function api<T>(
       message = parsedBody;
     }
 
-    throw new Error(message ?? response.statusText);
+    const error = new Error(message ?? response.statusText);
+    (error as Error & { status?: number }).status = response.status;
+    (error as Error & { body?: unknown }).body = parsedBody;
+    throw error;
   }
 
   return parsedBody;

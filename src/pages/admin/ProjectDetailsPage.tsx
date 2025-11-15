@@ -1,15 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import DashboardLayout from "@/components/layout/DashboardLayout";
@@ -18,8 +11,9 @@ import { StatusBadge } from "@/components/projects/StatusBadge";
 import {
   getAdminProject,
   approveProject,
-  createAdminTask,
   updateAdminAppointmentStatus,
+  listActiveEmployees,
+  type EmployeeOption,
 } from "@/services/projectService";
 import type { ProjectDetails, ProjectTask, ProjectStatus } from "@/types/project";
 
@@ -36,7 +30,7 @@ const defaultApproveState = (project?: ProjectDetails): ApproveFormState => {
   const assignments: ApproveFormState["assignments"] = {};
   project?.tasks.forEach((task) => {
     assignments[task.taskId] = {
-      assigneeId: task.assigneeId,
+      assigneeId: task.assigneeId != null ? String(task.assigneeId) : undefined,
       scheduledStart: task.scheduledStart?.slice(0, 16),
       scheduledEnd: task.scheduledEnd?.slice(0, 16),
     };
@@ -54,10 +48,12 @@ export default function ProjectDetailsPage() {
   const [project, setProject] = useState<ProjectDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [approveOpen, setApproveOpen] = useState(false);
+  const [assignOpen, setAssignOpen] = useState(false);
   const [approveState, setApproveState] = useState<ApproveFormState>(defaultApproveState());
-  const [taskDraft, setTaskDraft] = useState({ title: "", serviceType: "", detail: "" });
   const [submitting, setSubmitting] = useState(false);
+  const [employees, setEmployees] = useState<EmployeeOption[]>([]);
+  const [employeesLoading, setEmployeesLoading] = useState(true);
+  const [employeeError, setEmployeeError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -86,19 +82,58 @@ export default function ProjectDetailsPage() {
     };
   }, [id]);
 
+  useEffect(() => {
+    let active = true;
+    const loadEmployees = async () => {
+      try {
+        setEmployeesLoading(true);
+        setEmployeeError(null);
+        const data = await listActiveEmployees();
+        if (!active) return;
+        setEmployees(
+          data
+            .map((emp) => ({
+              ...emp,
+              id: String(emp.id),
+            }))
+        );
+      } catch (err) {
+        if (!active) return;
+        setEmployeeError(err instanceof Error ? err.message : "Failed to load employees");
+      } finally {
+        if (!active) return;
+        setEmployeesLoading(false);
+      }
+    };
+    loadEmployees();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const toUtcIso = (value?: string) => (value ? new Date(value).toISOString() : undefined);
+
   const handleApprove = async () => {
     if (!project) return;
+    const unassigned = project.tasks.filter((task) => !approveState.assignments[task.taskId]?.assigneeId);
+    if (unassigned.length > 0) {
+      alert("Assign an employee to every task before approving the project.");
+      return;
+    }
     try {
       setSubmitting(true);
       await approveProject(project.projectId, {
-        approvedStart: approveState.approvedStart,
-        approvedEnd: approveState.approvedEnd,
-        tasks: project.tasks.map((task) => ({
-          taskId: task.taskId,
-          assigneeId: approveState.assignments[task.taskId]?.assigneeId,
-          scheduledStart: approveState.assignments[task.taskId]?.scheduledStart,
-          scheduledEnd: approveState.assignments[task.taskId]?.scheduledEnd,
-        })),
+        approvedStart: toUtcIso(approveState.approvedStart),
+        approvedEnd: toUtcIso(approveState.approvedEnd),
+        tasks: project.tasks.map((task) => {
+          const assigneeValue = approveState.assignments[task.taskId]?.assigneeId;
+          return {
+            taskId: task.taskId,
+            assigneeId: assigneeValue ? Number(assigneeValue) : undefined,
+            scheduledStart: toUtcIso(approveState.assignments[task.taskId]?.scheduledStart),
+            scheduledEnd: toUtcIso(approveState.assignments[task.taskId]?.scheduledEnd),
+          };
+        }),
       });
       if (project.appointmentId) {
         try {
@@ -109,7 +144,8 @@ export default function ProjectDetailsPage() {
       }
       const updated = await getAdminProject(project.projectId);
       setProject(updated);
-      setApproveOpen(false);
+      setApproveState(defaultApproveState(updated));
+      setAssignOpen(false);
     } catch (err) {
       alert(err instanceof Error ? err.message : "Unable to approve project");
     } finally {
@@ -117,27 +153,41 @@ export default function ProjectDetailsPage() {
     }
   };
 
-  const handleAddTask = async () => {
-    if (!project || !taskDraft.title || !taskDraft.serviceType) return;
-    try {
-      setSubmitting(true);
-      await createAdminTask(project.projectId, {
-        title: taskDraft.title,
-        serviceType: taskDraft.serviceType,
-        detail: taskDraft.detail,
-      });
-      const updated = await getAdminProject(project.projectId);
-      setProject(updated);
-      setApproveState(defaultApproveState(updated));
-      setTaskDraft({ title: "", serviceType: "", detail: "" });
-    } catch (err) {
-      alert(err instanceof Error ? err.message : "Unable to add task");
-    } finally {
-      setSubmitting(false);
-    }
+  const projectTasks: ProjectTask[] = project?.tasks ?? [];
+  const employeeOptions = useMemo(
+    () =>
+      employees.map((emp) => ({
+        value: emp.id,
+        label: [emp.firstName, emp.lastName].filter(Boolean).join(" ") || emp.userName || emp.email,
+      })),
+    [employees]
+  );
+  const employeeLabelMap = useMemo(() => {
+    const map = new Map<string, string>();
+    employeeOptions.forEach((option) => map.set(option.value, option.label));
+    return map;
+  }, [employeeOptions]);
+
+  const updateAssignment = (taskId: string, changes: Partial<{ assigneeId?: string; scheduledStart?: string; scheduledEnd?: string }>) => {
+    setApproveState((prev) => ({
+      ...prev,
+      assignments: {
+        ...prev.assignments,
+        [taskId]: {
+          ...prev.assignments[taskId],
+          ...changes,
+        },
+      },
+    }));
   };
 
-  const projectTasks: ProjectTask[] = project?.tasks ?? [];
+  const assignmentsComplete = projectTasks.every(
+    (task) => !!approveState.assignments[task.taskId]?.assigneeId
+  );
+  const canManageAssignments =
+    project?.status !== undefined &&
+    project.status !== "Completed" &&
+    project.status !== "Cancelled";
 
   const summaryRows = useMemo(() => {
     if (!project) return [];
@@ -219,41 +269,21 @@ export default function ProjectDetailsPage() {
           </CardContent>
         </Card>
 
-        {isPending(project.status) && (
-          <Button onClick={() => setApproveOpen(true)} className="w-full sm:w-auto">
-            Approve & assign
+        {canManageAssignments && (
+          <Button onClick={() => setAssignOpen((prev) => !prev)} className="w-full sm:w-auto">
+            {isPending(project.status) ? "Approve & assign" : assignOpen ? "Hide assignment panel" : "Assign technicians"}
           </Button>
         )}
 
         <Card>
           <CardHeader>
             <CardTitle>Tasks</CardTitle>
-            <p className="text-sm text-muted-foreground">Work items created from the appointment</p>
+            <p className="text-sm text-muted-foreground">Work items generated from appointments for this vehicle.</p>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid gap-3 rounded-md border p-4">
-              <Label htmlFor="taskTitle">Add task</Label>
-              <Input
-                id="taskTitle"
-                placeholder="Title"
-                value={taskDraft.title}
-                onChange={(e) => setTaskDraft((prev) => ({ ...prev, title: e.target.value }))}
-              />
-              <Input
-                placeholder="Service type"
-                value={taskDraft.serviceType}
-                onChange={(e) => setTaskDraft((prev) => ({ ...prev, serviceType: e.target.value }))}
-              />
-              <Textarea
-                placeholder="Detail"
-                value={taskDraft.detail}
-                onChange={(e) => setTaskDraft((prev) => ({ ...prev, detail: e.target.value }))}
-              />
-              <Button type="button" onClick={handleAddTask} disabled={submitting || !taskDraft.title || !taskDraft.serviceType}>
-                Add task
-              </Button>
-            </div>
-
+            {employeeError && (
+              <p className="text-sm text-destructive">Unable to load employees: {employeeError}</p>
+            )}
             <div className="overflow-hidden rounded-md border">
               <table className="min-w-full divide-y text-sm">
                 <thead className="bg-muted/50">
@@ -277,8 +307,12 @@ export default function ProjectDetailsPage() {
                       <tr key={task.taskId}>
                         <td className="px-4 py-2 font-medium">{task.title}</td>
                         <td className="px-4 py-2">{task.serviceType}</td>
-                        <td className="px-4 py-2">{task.status}</td>
-                        <td className="px-4 py-2">{task.assigneeId ?? "Unassigned"}</td>
+                        <td className="px-4 py-2 uppercase text-xs">{task.status}</td>
+                        <td className="px-4 py-2">
+                          {task.assigneeId != null
+                            ? employeeLabelMap.get(String(task.assigneeId)) ?? `Employee #${task.assigneeId}`
+                            : "Unassigned"}
+                        </td>
                         <td className="px-4 py-2 text-xs text-muted-foreground">
                           {formatDateTime(task.scheduledStart)} – {formatDateTime(task.scheduledEnd)}
                         </td>
@@ -313,12 +347,12 @@ export default function ProjectDetailsPage() {
         </Card>
       </div>
 
-      <Dialog open={approveOpen} onOpenChange={setApproveOpen}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Approve project</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
+        {canManageAssignments && assignOpen && (
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle>{isPending(project.status) ? "Approve project" : "Assign technicians"}</CardTitle>
+            </CardHeader>
+          <CardContent className="space-y-4">
             <div className="grid gap-3 md:grid-cols-2">
               <div>
                 <Label htmlFor="approvedStart">Approved start</Label>
@@ -327,6 +361,7 @@ export default function ProjectDetailsPage() {
                   type="datetime-local"
                   value={approveState.approvedStart ?? ""}
                   onChange={(e) => setApproveState((prev) => ({ ...prev, approvedStart: e.target.value }))}
+                  disabled={!isPending(project.status)}
                 />
               </div>
               <div>
@@ -336,50 +371,37 @@ export default function ProjectDetailsPage() {
                   type="datetime-local"
                   value={approveState.approvedEnd ?? ""}
                   onChange={(e) => setApproveState((prev) => ({ ...prev, approvedEnd: e.target.value }))}
+                  disabled={!isPending(project.status)}
                 />
               </div>
             </div>
-
             <div className="space-y-4">
               {projectTasks.map((task) => (
                 <div key={task.taskId} className="rounded-md border p-3">
                   <p className="text-sm font-medium">{task.title}</p>
                   <div className="mt-2 grid gap-3 md:grid-cols-3">
                     <div>
-                      <Label>Assignee ID</Label>
-                      <Input
+                      <Label>Assignee</Label>
+                      <select
+                        className="w-full rounded-md border px-3 py-2 text-sm"
                         value={approveState.assignments[task.taskId]?.assigneeId ?? ""}
-                        onChange={(e) =>
-                          setApproveState((prev) => ({
-                            ...prev,
-                            assignments: {
-                              ...prev.assignments,
-                              [task.taskId]: {
-                                ...prev.assignments[task.taskId],
-                                assigneeId: e.target.value || undefined,
-                              },
-                            },
-                          }))
-                        }
-                      />
+                        onChange={(e) => updateAssignment(task.taskId, { assigneeId: e.target.value || undefined })}
+                        disabled={employeesLoading}
+                      >
+                        <option value="">Unassigned</option>
+                        {employeeOptions.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                     <div>
                       <Label>Scheduled start</Label>
                       <Input
                         type="datetime-local"
                         value={approveState.assignments[task.taskId]?.scheduledStart ?? ""}
-                        onChange={(e) =>
-                          setApproveState((prev) => ({
-                            ...prev,
-                            assignments: {
-                              ...prev.assignments,
-                              [task.taskId]: {
-                                ...prev.assignments[task.taskId],
-                                scheduledStart: e.target.value || undefined,
-                              },
-                            },
-                          }))
-                        }
+                        onChange={(e) => updateAssignment(task.taskId, { scheduledStart: e.target.value || undefined })}
                       />
                     </div>
                     <div>
@@ -387,36 +409,24 @@ export default function ProjectDetailsPage() {
                       <Input
                         type="datetime-local"
                         value={approveState.assignments[task.taskId]?.scheduledEnd ?? ""}
-                        onChange={(e) =>
-                          setApproveState((prev) => ({
-                            ...prev,
-                            assignments: {
-                              ...prev.assignments,
-                              [task.taskId]: {
-                                ...prev.assignments[task.taskId],
-                                scheduledEnd: e.target.value || undefined,
-                              },
-                            },
-                          }))
-                        }
+                        onChange={(e) => updateAssignment(task.taskId, { scheduledEnd: e.target.value || undefined })}
                       />
                     </div>
                   </div>
                 </div>
               ))}
             </div>
-
             <div className="flex justify-end gap-3">
-              <Button variant="outline" onClick={() => setApproveOpen(false)}>
+              <Button variant="outline" onClick={() => setAssignOpen(false)}>
                 Cancel
               </Button>
-              <Button onClick={handleApprove} disabled={submitting}>
-                Save & approve
+              <Button onClick={handleApprove} disabled={submitting || !assignmentsComplete}>
+                {isPending(project.status) ? "Save & approve" : "Save assignments"}
               </Button>
             </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+          </CardContent>
+        </Card>
+      )}
     </DashboardLayout>
   );
 }
