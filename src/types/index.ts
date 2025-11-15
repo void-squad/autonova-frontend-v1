@@ -1,39 +1,91 @@
-export type Role = 'Admin' | 'Employee' | 'Customer';
+export type Role = 'ADMIN' | 'EMPLOYEE' | 'CUSTOMER';
 
-export type User = {
-  id: string;
-  name: string;
+export interface AuthUser {
+  id: number;
+  userName: string;
   email: string;
-  phone?: string;
-  address?: string;
-  roles: Role[];
-  avatarUrl?: string;
-  status: 'active' | 'disabled';
-};
+  role: string;
+  name?: string | null;
+  avatarUrl?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+  contactOne?: string | null;
+  contactTwo?: string | null;
+  address?: string | null;
+  enabled?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
 
-export type Vehicle = {
-  id: string;
-  customerId: string;
+export interface ProfileUser extends AuthUser {
+  password?: string;
+}
+
+export interface ProfileCustomer {
+  id: number;
+  firstName?: string | null;
+  lastName?: string | null;
+  email: string;
+  phoneNumber?: string | null;
+  vehicles?: Vehicle[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface ProfileResponse {
+  user: ProfileUser;
+  customer?: ProfileCustomer | null;
+}
+
+export interface Customer {
+  id: number;
+  userName: string;
+  email: string;
+  firstName?: string | null;
+  lastName?: string | null;
+  contactOne: string;
+  phoneNumber?: string | null;
+  contactTwo?: string | null;
+  address?: string | null;
+  enabled?: boolean;
+  vehicles?: Vehicle[];
+}
+
+export interface CustomerUpdate {
+  userName?: string;
+  email?: string;
+  firstName?: string | null;
+  lastName?: string | null;
+  contactOne?: string;
+  contactTwo?: string | null;
+  address?: string | null;
+  password?: string;
+  enabled?: boolean;
+}
+
+export interface Vehicle {
+  id: number;
   make: string;
   model: string;
   year: number;
+  vin: string;
   licensePlate: string;
-};
+  customerId?: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
 
-export type AppointmentStatus = 'booked' | 'pending' | 'in_progress' | 'completed' | 'canceled';
+export type VehicleInput = Omit<Vehicle, 'id'>;
 
-export type Appointment = {
-  id: string;
-  customerId: string;
-  vehicleId: string;
-  serviceType: string;
-  start: string;
-  end: string;
-  status: AppointmentStatus;
-  notes?: string;
-};
+export * from './appointment';
+export * from './billing';
 
-export type ProjectStatus = 'planned' | 'in_progress' | 'blocked' | 'completed' | 'canceled';
+export type ProjectStatus =
+  | 'planned'
+  | 'in_progress'
+  | 'blocked'
+  | 'completed'
+  | 'canceled';
 
 export type Project = {
   id: string;
@@ -95,11 +147,8 @@ export type ServicePrice = {
   active: boolean;
 };
 
-export type AuthTokens = {
-  accessToken: string;
-  refreshToken: string;
-};
-
-export type LoginResponse = AuthTokens & {
-  user: User;
-};
+export interface LoginResponse {
+  token: string;
+  type: string;
+  user: AuthUser;
+}

@@ -7,6 +7,7 @@ import {
   Clock,
   CheckCircle,
   AlertCircle,
+  UserCog,
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -24,6 +25,12 @@ export default function AdminDashboard() {
   ];
 
   const quickLinks = [
+    {
+      title: 'Employee Management',
+      description: 'Manage employees & workload',
+      icon: UserCog,
+      href: '/admin/employees',
+    },
     {
       title: 'User Management',
       description: 'Manage users and roles',
@@ -95,7 +102,7 @@ export default function AdminDashboard() {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Admin Dashboard</h1>
-        <p className="text-muted-foreground mt-1">Welcome back, {user?.name}. Here's your business overview</p>
+        <p className="text-muted-foreground mt-1">Welcome back, {user?.userName}. Here's your business overview</p>
       </div>
 
       {/* Stats Grid */}
@@ -122,7 +129,7 @@ export default function AdminDashboard() {
       {/* Quick Links */}
       <div>
         <h2 className="text-xl font-semibold mb-4">Quick Access</h2>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           {quickLinks.map((link) => (
             <Card key={link.title} className="hover:shadow-lg transition-smooth cursor-pointer group">
               <Link to={link.href}>
