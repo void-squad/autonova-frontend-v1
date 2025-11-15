@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import useChatbotStatus from "../hooks/useChatbotStatus";
+import { getAiResponse } from "../lib/api/chatbot";
 
 type Props = {
   disabledPaths?: string[];
@@ -108,8 +109,8 @@ const Chatbot: React.FC<Props> = ({ disabledPaths }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  // handle sending messages locally (websocket integration later)
-  const handleSend = () => {
+  // handle sending messages using AI service
+  const handleSend = async () => {
     const text = input.trim();
     if (!text) return;
 
@@ -118,19 +119,24 @@ const Chatbot: React.FC<Props> = ({ disabledPaths }) => {
     setMessages((m) => [...m, userMsg]);
     setInput("");
 
-    // Simulate status updates via hook
     const s1 = pushStatus("Thinking...");
-    // After some time, mark thinking complete and move to next status
-    setTimeout(() => {
+    try {
+      const result = await getAiResponse(text);
       setStatusComplete(s1);
+
+      // optional small follow-up status
       const s2 = pushStatus("Preparing workflow...");
-      setTimeout(() => {
-        setStatusComplete(s2);
-        // Simulate bot reply
-        const bid = msgId.current++;
-        setMessages((m) => [...m, { id: bid, from: "bot", text: `Nova: ${text}`, time: Date.now() }]);
-      }, 900);
-    }, 900);
+      setTimeout(() => setStatusComplete(s2), 600);
+
+      const bid = msgId.current++;
+      setMessages((m) => [...m, { id: bid, from: "bot", text: result.response ?? "", time: Date.now() }]);
+      // (optional) you can use result.tokens if you want to display token info
+    } catch (err) {
+      setStatusFailed(s1);
+      const bid = msgId.current++;
+      const message = err instanceof Error ? err.message : String(err);
+      setMessages((m) => [...m, { id: bid, from: "bot", text: `Error: ${message}`, time: Date.now() }]);
+    }
   };
 
   if (disabled) return null;
