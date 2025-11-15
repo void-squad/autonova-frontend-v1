@@ -15,6 +15,7 @@ import { QuoteCard } from "@/components/projects/QuoteCard";
 import { ProjectForm, type ProjectFormValues } from "@/components/projects/ProjectForm";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { TaskFormValues } from "@/components/projects/AddTaskDialog";
+import { EMPLOYEE_ROUTES } from '@/lib/routes';
 
 import { useProjectsStore } from "@/contexts/ProjectsStore";
 import type { Project, ProjectActivity, Quote, Task } from "@/types/project";
@@ -231,6 +232,9 @@ export default function ProjectDetailsPage() {
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => navigate("/employee/projects")}>
               Back
+            </Button>
+            <Button variant="ghost" onClick={() => navigate(EMPLOYEE_ROUTES.projectProgress(id ?? ''))}>
+              View progress
             </Button>
             <Button onClick={() => setEditOpen(true)}>Edit</Button>
           </div>

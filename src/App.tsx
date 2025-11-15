@@ -100,6 +100,7 @@ const NotificationsRoute = () => {
   );
 };
 import UserManagement from "./pages/admin/UserManagement";
+import CustomerProgressIndex from "./pages/customer/ProgressIndex";
 
 const queryClient = new QueryClient();
 
@@ -170,6 +171,7 @@ const App = () => {
                   <Route path="appointments" element={<MyAppointments />} />
                   <Route path="billing" element={<CustomerBilling />} />
                   <Route path="progress/:projectId" element={<CustomerProjectProgress />} />
+                  <Route path="progress" element={<CustomerProgressIndex />} />
                   <Route path="vehicles" element={<VehiclesPage />} />
                 </Route>
 
