@@ -10,25 +10,25 @@ const STATUS_META: Record<
     className?: string;
   }
 > = {
-  pending: {
+  PendingReview: {
     label: "Pending review",
     variant: "secondary",
   },
-  approved: {
+  Approved: {
     label: "Approved",
     variant: "default",
   },
-  in_progress: {
+  InProgress: {
     label: "In progress",
     variant: "default",
   },
-  completed: {
+  Completed: {
     label: "Completed",
     variant: "outline",
     className:
       "border-emerald-500 bg-emerald-500/10 text-emerald-600 dark:border-emerald-400 dark:bg-emerald-400/20 dark:text-emerald-100",
   },
-  cancelled: {
+  Cancelled: {
     label: "Cancelled",
     variant: "destructive",
   },
@@ -41,6 +41,10 @@ interface StatusBadgeProps {
 
 export const StatusBadge = ({ status, className }: StatusBadgeProps) => {
   const config = STATUS_META[status];
+
+  if (!config) {
+    return <Badge className={className}>{status}</Badge>;
+  }
 
   return (
     <Badge variant={config.variant} className={cn(config.className, className)}>

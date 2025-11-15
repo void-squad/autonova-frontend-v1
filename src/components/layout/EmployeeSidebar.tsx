@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, ClipboardList, Clock, Wrench, FileText, HelpCircle, CreditCard } from 'lucide-react';
+import { LayoutDashboard, ClipboardList, Clock, FileText, HelpCircle, CreditCard } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navigation = [
@@ -7,7 +7,6 @@ const navigation = [
   { name: 'My Tasks', href: '/employee/tasks', icon: ClipboardList },
   { name: 'Time Logs', href: '/employee/time-logging', icon: Clock },
   { name: 'Billing', href: '/employee/billing', icon: CreditCard },
-  { name: 'Projects', href: '/employee/projects', icon: Wrench },
   { name: 'Reports', href: '/employee/reports', icon: FileText },
   { name: 'Help', href: '/help', icon: HelpCircle },
 ];

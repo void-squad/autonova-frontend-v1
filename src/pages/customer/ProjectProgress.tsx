@@ -1,128 +1,181 @@
-import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
-import { ProjectProgressBar } from '@/components/projects/ProjectProgressBar';
-import { ProgressTimeline } from '@/components/projects/ProgressTimeline';
-import { progressService, ProjectProgress } from '@/services/progressService';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import type { Project } from '@/types';
+import { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { StatusBadge } from "@/components/projects/StatusBadge";
+import {
+  getProjectDetails,
+  cancelProject,
+} from "@/services/projectService";
+import type { ProjectDetails } from "@/types/project";
 
-// Dummy data for local preview / design reference.
-// You can uncomment the setProgress(DUMMY_PROGRESS) line in the load() function below to use this data.
-const DUMMY_PROGRESS: ProjectProgress = {
-  projectId: 'demo-123',
-  status: 'in_progress',
-  progressPercentage: 42,
-  messages: [
-    {
-      id: 'm3',
-      authorId: 'emp-002',
-      authorName: 'Jordan Smith',
-      content: 'Replaced the front bumper and started paint prep. Awaiting color match approval.',
-      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
-    },
-    {
-      id: 'm2',
-      authorId: 'emp-001',
-      authorName: 'Alex Murphy',
-      content: 'Ordered replacement parts. ETA 3 days.',
-      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
-    },
-    {
-      id: 'm1',
-      authorName: 'System',
-      content: 'Project created and scheduled for inspection.',
-      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 48).toISOString(),
-    },
-  ],
-};
+const formatDate = (value?: string) => (value ? new Date(value).toLocaleString() : "—");
 
 export default function CustomerProjectProgressPage() {
-  const { projectId } = useParams();
-  const [progress, setProgress] = useState<ProjectProgress | null>(null);
-  const [project, setProject] = useState<Project | null>(null);
+  const { projectId } = useParams<{ projectId: string }>();
+  const [project, setProject] = useState<ProjectDetails | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!projectId) return;
-    let unsub: (() => void) | undefined;
+    let active = true;
 
     const load = async () => {
-      setLoading(true);
-          try {
-            const data = await progressService.getProjectProgress(projectId);
-            setProgress(data);
-            // fetch project details via progressService (will return demo for 'demo')
-            try {
-              const p = await progressService.getProjectDetails(projectId);
-              setProject(p as Project);
-            } catch (err) {
-              // ignore - project details are optional
-            }
-          } catch (err) {
-        console.error('Failed to load project progress', err);
+      try {
+        setLoading(true);
+        setError(null);
+        const data = await getProjectDetails(projectId);
+        if (!active) return;
+        setProject(data);
+      } catch (err) {
+        if (!active) return;
+        setError(err instanceof Error ? err.message : "Failed to load project");
       } finally {
+        if (!active) return;
         setLoading(false);
       }
-
-      // subscribe for realtime
-      unsub = progressService.subscribeToProjectProgress(projectId, (data) => {
-        setProgress(data);
-      });
     };
-    load();
 
+    load();
     return () => {
-      unsub?.();
+      active = false;
     };
   }, [projectId]);
 
-  if (!projectId) return <div>Project id missing</div>;
+  const handleCancel = async () => {
+    if (!projectId) return;
+    if (!confirm("Cancel this request?")) return;
+    try {
+      await cancelProject(projectId);
+      const updated = await getProjectDetails(projectId);
+      setProject(updated);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Unable to cancel project");
+    }
+  };
+
+  if (!projectId) {
+    return <p className="p-4">Missing project ID.</p>;
+  }
+
+  if (loading) {
+    return <p className="p-4">Loading project…</p>;
+  }
+
+  if (error || !project) {
+    return <p className="p-4 text-destructive">{error ?? "Project not found."}</p>;
+  }
+
+  const canCancel = project.status === "PendingReview";
 
   return (
-    <div className="max-w-10xl mx-auto px-2 py-6">
-      <div className="space-y-6">
-
-        {/* Project details */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle>{project?.title ?? 'Project details'}</CardTitle>
-              <Badge className="uppercase">{project?.status ?? progress?.status ?? 'unknown'}</Badge>
-            </div>
-            {project?.description && <CardDescription>{project.description}</CardDescription>}
-
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-              <div>
-                <div className="text-sm text-muted-foreground">Project ID</div>
-                <div className="font-medium">{project?.id ?? projectId}</div>
-              </div>
-              <div>
-                <div className="text-sm text-muted-foreground">Start date</div>
-                <div className="font-medium">{project?.startDate ? new Date(project.startDate).toLocaleDateString() : '-'}</div>
-              </div>
-              <div>
-                <div className="text-sm text-muted-foreground">End date</div>
-                <div className="font-medium">{(project as any)?.endDate ? new Date((project as any).endDate).toLocaleDateString() : '-'}</div>
-              </div>
-              <div>
-                <div className="text-sm text-muted-foreground">Customer</div>
-                <div className="font-medium">{(project as any)?.customerName ?? (project as any)?.customer ?? '-'}</div>
-              </div>
-              <div>
-                <div className="text-sm text-muted-foreground">Budget</div>
-                <div className="font-medium">{typeof (project as any)?.budget === 'number' ? `$${((project as any).budget).toLocaleString()}` : ((project as any)?.budget ?? '-')}</div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <ProjectProgressBar status={progress?.status ?? project?.status ?? 'unknown'} percent={progress?.progressPercentage ?? project?.progressPct} />
-
-        <ProgressTimeline messages={progress?.messages ?? []} />
+    <div className="mx-auto max-w-5xl space-y-6 p-4">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">{project.title}</h1>
+          <p className="text-muted-foreground">Vehicle {project.vehicleId}</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <StatusBadge status={project.status} />
+          {canCancel && (
+            <Button variant="outline" onClick={handleCancel}>
+              Cancel request
+            </Button>
+          )}
+        </div>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Summary</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <p className="text-sm text-muted-foreground">Requested window</p>
+            <p className="font-medium">
+              {formatDate(project.requestedStart)} – {formatDate(project.requestedEnd)}
+            </p>
+          </div>
+          <div>
+            <p className="text-sm text-muted-foreground">Approved window</p>
+            <p className="font-medium">
+              {formatDate(project.approvedStart)} – {formatDate(project.approvedEnd)}
+            </p>
+          </div>
+          <div>
+            <p className="text-sm text-muted-foreground">Created</p>
+            <p className="font-medium">{formatDate(project.createdAt)}</p>
+          </div>
+          <div>
+            <p className="text-sm text-muted-foreground">Updated</p>
+            <p className="font-medium">{formatDate(project.updatedAt)}</p>
+          </div>
+          {project.description && (
+            <div className="sm:col-span-2">
+              <p className="text-sm text-muted-foreground">Description</p>
+              <p>{project.description}</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Tasks</CardTitle>
+        </CardHeader>
+        <CardContent className="overflow-hidden rounded-md border">
+          <table className="min-w-full text-sm">
+            <thead className="bg-muted/50">
+              <tr>
+                <th className="px-4 py-2 text-left">Title</th>
+                <th className="px-4 py-2 text-left">Service</th>
+                <th className="px-4 py-2 text-left">Status</th>
+                <th className="px-4 py-2 text-left">Schedule</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {project.tasks.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="px-4 py-6 text-center text-muted-foreground">
+                    No tasks yet.
+                  </td>
+                </tr>
+              ) : (
+                project.tasks.map((task) => (
+                  <tr key={task.taskId}>
+                    <td className="px-4 py-2 font-medium">{task.title}</td>
+                    <td className="px-4 py-2">{task.serviceType}</td>
+                    <td className="px-4 py-2">{task.status}</td>
+                    <td className="px-4 py-2 text-xs text-muted-foreground">
+                      {formatDate(task.scheduledStart)} – {formatDate(task.scheduledEnd)}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent activity</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {project.activity.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No updates yet.</p>
+          ) : (
+            project.activity.map((entry) => (
+              <div key={entry.id} className="rounded-md border p-3">
+                <p className="text-sm font-medium">{entry.actorRole}</p>
+                <p className="text-xs text-muted-foreground">{formatDate(entry.createdAt)}</p>
+                <p className="mt-1 text-sm">{entry.message}</p>
+              </div>
+            ))
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
