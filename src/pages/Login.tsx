@@ -72,7 +72,8 @@ export default function Login() {
         return;
       }
 
-      toast.success('Welcome Customer!');
+      const customerName = authUser.firstName || authUser.name || 'Customer';
+      toast.success(`Welcome back, ${customerName}!`);
       navigate('/customer', { replace: true });
     } catch (error) {
       console.error('❌ Login error:', error);

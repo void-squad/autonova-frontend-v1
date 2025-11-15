@@ -77,9 +77,16 @@ export const TimeLoggingPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showStopModal, setShowStopModal] = useState(false);
   const [showManualLogModal, setShowManualLogModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingLog, setEditingLog] = useState<TimeLog | null>(null);
   const [selectedProjectForManualLog, setSelectedProjectForManualLog] =
     useState<string>("");
   const [tasksForManualLog, setTasksForManualLog] = useState<ProjectTask[]>([]);
+  const [editSelectedProjectForManualLog, setEditSelectedProjectForManualLog] =
+    useState<string>("");
+  const [editTasksForManualLog, setEditTasksForManualLog] = useState<
+    ProjectTask[]
+  >([]);
 
   // Filter States
   const [appliedFilters, setAppliedFilters] = useState<FilterOptions>({
@@ -473,7 +480,53 @@ export const TimeLoggingPage = () => {
   };
 
   const handleEditTimeLog = async (log: TimeLog) => {
-    toast.info("Edit functionality coming soon");
+    try {
+      setEditingLog(log);
+      setEditSelectedProjectForManualLog(log.projectId);
+      // fetch tasks for that project
+      const tasks = await timeLoggingApi.getProjectTasks(log.projectId);
+      setEditTasksForManualLog(
+        tasks.map((t) => ({
+          id: t.id,
+          projectId: t.projectId,
+          taskName: t.taskName,
+          description: t.description,
+          status: t.status,
+          priority: t.priority,
+          estimatedHours: t.estimatedHours,
+          actualHours: t.actualHours,
+          dueDate: t.dueDate,
+        }))
+      );
+      setShowEditModal(true);
+    } catch (error) {
+      console.error("Error preparing edit modal:", error);
+      toast.error("Failed to open edit form");
+    }
+  };
+
+  const handleCloseEditModal = () => {
+    setShowEditModal(false);
+    setEditingLog(null);
+    setEditSelectedProjectForManualLog("");
+    setEditTasksForManualLog([]);
+  };
+
+  const handleSubmitEdit = async (data: TimeLogFormData) => {
+    if (!editingLog) return;
+    setIsLoading(true);
+    try {
+      await timeLoggingApi.updateTimeLog(editingLog.id, data);
+      handleCloseEditModal();
+      await refreshAllData();
+      toast.success("Time log updated successfully!");
+    } catch (error) {
+      console.error("Error updating time log:", error);
+      const err = error as { response?: { data?: { message?: string } } };
+      toast.error(err.response?.data?.message || "Failed to update time log");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // Filter handlers
@@ -621,6 +674,54 @@ export const TimeLoggingPage = () => {
               onProjectChange={handleManualLogProjectChange}
               onSubmit={handleSubmitManualLog}
               isLoading={isLoading}
+            />
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit Time Log Modal */}
+        <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Edit Time Log</DialogTitle>
+            </DialogHeader>
+            <ManualTimeLogModal
+              projects={projects}
+              tasks={editTasksForManualLog}
+              selectedProjectId={editSelectedProjectForManualLog}
+              onProjectChange={async (projectId: string) => {
+                setEditSelectedProjectForManualLog(projectId);
+                try {
+                  const tasks = await timeLoggingApi.getProjectTasks(projectId);
+                  setEditTasksForManualLog(
+                    tasks.map((t) => ({
+                      id: t.id,
+                      projectId: t.projectId,
+                      taskName: t.taskName,
+                      description: t.description,
+                      status: t.status,
+                      priority: t.priority,
+                      estimatedHours: t.estimatedHours,
+                      actualHours: t.actualHours,
+                      dueDate: t.dueDate,
+                    }))
+                  );
+                } catch (error) {
+                  console.error("Error fetching tasks for edit:", error);
+                }
+              }}
+              onSubmit={handleSubmitEdit}
+              isLoading={isLoading}
+              initialData={
+                editingLog
+                  ? {
+                      projectId: editingLog.projectId,
+                      taskId: editingLog.taskId,
+                      hours: editingLog.hours,
+                      note: editingLog.note,
+                    }
+                  : undefined
+              }
+              submitLabel="Update Time"
             />
           </DialogContent>
         </Dialog>

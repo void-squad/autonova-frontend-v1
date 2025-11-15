@@ -1,16 +1,46 @@
-import { Calendar, Car, Wrench, CreditCard, FileText } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Calendar,
+  Car,
+  Wrench,
+  CreditCard,
+  FileText,
+  TrendingUp,
+} from 'lucide-react';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { useQuery } from '@tanstack/react-query';
-import { fetchCustomerProjects } from '@/services/projectService';
-import type { ProjectSummary } from '@/types/project';
-import { StatusBadge } from '@/components/projects/StatusBadge';
-import { format } from 'date-fns';
+import { useEffect, useState } from 'react';
+import { getVehicleStats } from '@/services/authService';
 
 export default function CustomerDashboard() {
   const { user } = useAuth();
+  const [vehicleCount, setVehicleCount] = useState<number | null>(null);
+  const [loadingVehicles, setLoadingVehicles] = useState(true);
+
+  const displayName = user?.firstName || user?.name || 'Customer';
+
+  useEffect(() => {
+    const fetchVehicleStats = async () => {
+      try {
+        const stats = await getVehicleStats();
+        setVehicleCount(stats.totalVehicles);
+      } catch (error) {
+        console.error('Failed to fetch vehicle stats:', error);
+        setVehicleCount(0);
+      } finally {
+        setLoadingVehicles(false);
+      }
+    };
+
+    fetchVehicleStats();
+  }, []);
 
   const { data: projects } = useQuery<ProjectSummary[]>({
     queryKey: ['customer-projects'],
@@ -19,15 +49,30 @@ export default function CustomerDashboard() {
   });
 
   const stats = [
-    { label: 'Upcoming Appointments', value: '2', icon: Calendar, color: 'text-primary' },
-    { label: 'Vehicles Registered', value: '3', icon: Car, color: 'text-accent' },
+    {
+      label: 'Upcoming Appointments',
+      value: '2',
+      icon: Calendar,
+      color: 'text-primary',
+    },
+    {
+      label: 'Vehicles Registered',
+      value: loadingVehicles ? '...' : vehicleCount?.toString() || '0',
+      icon: Car,
+      color: 'text-accent',
+    },
     {
       label: 'Active Projects',
-      value: projects?.filter((p) => p.status === 'InProgress').length ?? 0,
+      value: '1',
       icon: Wrench,
       color: 'text-secondary',
     },
-    { label: 'Unpaid Invoices', value: '$450', icon: CreditCard, color: 'text-destructive' },
+    {
+      label: 'Unpaid Invoices',
+      value: '$450',
+      icon: CreditCard,
+      color: 'text-destructive',
+    },
   ];
 
   const quickActions = [
@@ -79,8 +124,10 @@ export default function CustomerDashboard() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Welcome back, {user?.name}!</h1>
-        <p className="text-muted-foreground mt-1">Here's what's happening with your vehicles</p>
+        <h1 className="text-3xl font-bold">Welcome back, {displayName}!</h1>
+        <p className="text-muted-foreground mt-1">
+          Here's what's happening with your vehicles
+        </p>
       </div>
 
       {/* Stats Grid */}
@@ -88,7 +135,9 @@ export default function CustomerDashboard() {
         {stats.map((stat) => (
           <Card key={stat.label}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">{stat.label}</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                {stat.label}
+              </CardTitle>
               <stat.icon className={`h-4 w-4 ${stat.color}`} />
             </CardHeader>
             <CardContent>
@@ -103,7 +152,10 @@ export default function CustomerDashboard() {
         <h2 className="text-xl font-semibold mb-4">Quick Actions</h2>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {quickActions.map((action) => (
-            <Card key={action.title} className="hover:shadow-lg transition-smooth cursor-pointer group">
+            <Card
+              key={action.title}
+              className="hover:shadow-lg transition-smooth cursor-pointer group"
+            >
               <Link to={action.href}>
                 <CardHeader>
                   <div className="flex items-center space-x-2">
@@ -112,7 +164,9 @@ export default function CustomerDashboard() {
                     </div>
                     <CardTitle className="text-base">{action.title}</CardTitle>
                   </div>
-                  <CardDescription className="mt-2">{action.description}</CardDescription>
+                  <CardDescription className="mt-2">
+                    {action.description}
+                  </CardDescription>
                 </CardHeader>
               </Link>
             </Card>
@@ -164,7 +218,9 @@ export default function CustomerDashboard() {
       <Card>
         <CardHeader>
           <CardTitle>Upcoming Appointments</CardTitle>
-          <CardDescription>Your scheduled services and maintenance</CardDescription>
+          <CardDescription>
+            Your scheduled services and maintenance
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
@@ -179,12 +235,16 @@ export default function CustomerDashboard() {
                   </div>
                   <div>
                     <p className="font-medium">{appointment.service}</p>
-                    <p className="text-sm text-muted-foreground">{appointment.vehicle}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {appointment.vehicle}
+                    </p>
                   </div>
                 </div>
                 <div className="text-right">
                   <p className="font-medium">{appointment.date}</p>
-                  <p className="text-sm text-muted-foreground">{appointment.time}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {appointment.time}
+                  </p>
                 </div>
               </div>
             ))}

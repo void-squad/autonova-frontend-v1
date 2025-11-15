@@ -30,3 +30,9 @@ export interface InvoiceListResponse {
   limit: number;
   offset: number;
 }
+
+export interface PaymentIntentResponse {
+  paymentIntentId: string;
+  clientSecret: string;
+  publishableKey: string;
+}
