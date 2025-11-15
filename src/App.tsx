@@ -30,6 +30,7 @@ import CustomerDashboard from "./pages/customer/CustomerDashboard";
 import BookAppointment from "./pages/customer/BookAppointment";
 import MyAppointments from "./pages/customer/MyAppointments";
 import CustomerProjectProgress from "./pages/customer/ProjectProgress";
+import ProgressMonitoringDashboard from "./pages/customer/ProgressMonitoring";
 import VehiclesPage from "./pages/customer/vehicles";
 import CustomerBilling from "./pages/customer/CustomerBilling";
 import Profile from "./pages/Profile";
@@ -172,6 +173,7 @@ const App = () => {
                   <Route path="book-appointment" element={<BookAppointment />} />
                   <Route path="appointments" element={<MyAppointments />} />
                   <Route path="billing" element={<CustomerBilling />} />
+                  <Route path="progress-monitoring" element={<ProgressMonitoringDashboard />} />
                   <Route path="progress/:projectId" element={<CustomerProjectProgress />} />
                   <Route path="vehicles" element={<VehiclesPage />} />
                 </Route>
