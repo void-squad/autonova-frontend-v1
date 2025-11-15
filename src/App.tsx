@@ -23,12 +23,16 @@ import EmployeeDashboard from "./pages/employee/EmployeeDashboard";
 
 // Admin pages
 import AdminDashboard from "./pages/admin/AdminDashboard";
+import Chatbot_test from "./pages/Chatbot_test";
+import Chatbot from "./components/Chatbot";
+import { ChatbotStatusProvider } from "./hooks/useChatbotStatus";
 
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
+      <ChatbotStatusProvider>
       <TooltipProvider>
         <Toaster />
         <Sonner />
@@ -77,11 +81,18 @@ const App = () => (
               <Route path="dashboard" element={<AdminDashboard />} />
             </Route>
 
+            <Route path="/chatbot" element={<Chatbot_test />} />
+
             {/* 404 */}
             <Route path="*" element={<NotFound />} />
           </Routes>
+
+          {/* Global Chatbot - provide paths to disable the floating button here */}
+          <Chatbot disabledPaths={["/login", "/admin", "/admin/*"]} />
+        
         </BrowserRouter>
       </TooltipProvider>
+      </ChatbotStatusProvider>
     </AuthProvider>
   </QueryClientProvider>
 );
