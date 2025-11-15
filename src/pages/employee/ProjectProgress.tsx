@@ -97,6 +97,7 @@ const getCategoryColor = (category: string) => {
 };
 
 const nextStatuses: Record<TaskStatus, TaskStatus[]> = {
+  Pending: ["Requested", "Cancelled"],
   Requested: ["Accepted", "Cancelled"],
   Accepted: ["InProgress", "Cancelled"],
   InProgress: ["Completed"],
@@ -324,23 +325,33 @@ export default function EmployeeProjectProgressPage() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        {/* Left Column - Project Details & Tasks */}
-        <div className="space-y-6 lg:col-span-1">
+        {/* Left Column - Project Details, Tasks & Post Update Form */}
+        <div className="space-y-4 lg:col-span-1 overflow-y-auto" style={{ maxHeight: "calc(100vh - 10rem)" }}>
           <Card>
             <CardHeader>
-              <CardTitle>Project Summary</CardTitle>
+              <CardTitle className="text-lg">Project Summary</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div>
-                <p className="text-sm text-muted-foreground">Requested window</p>
-                <p className="font-medium text-sm">{formatDate(project.requestedStart)}</p>
-                <p className="font-medium text-sm">{formatDate(project.requestedEnd)}</p>
+              <div className="space-y-1">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Requested Window</p>
+                <div className="text-sm space-y-0.5">
+                  <p className="font-medium">{formatDate(project.requestedStart)}</p>
+                  <p className="font-medium">{formatDate(project.requestedEnd)}</p>
+                </div>
               </div>
               {project.approvedStart && (
-                <div>
-                  <p className="text-sm text-muted-foreground">Approved window</p>
-                  <p className="font-medium text-sm">{formatDate(project.approvedStart)}</p>
-                  <p className="font-medium text-sm">{formatDate(project.approvedEnd)}</p>
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Approved Window</p>
+                  <div className="text-sm space-y-0.5">
+                    <p className="font-medium text-green-700">{formatDate(project.approvedStart)}</p>
+                    <p className="font-medium text-green-700">{formatDate(project.approvedEnd)}</p>
+                  </div>
+                </div>
+              )}
+              {project.description && (
+                <div className="space-y-1 pt-2 border-t">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Description</p>
+                  <p className="text-sm leading-relaxed">{project.description}</p>
                 </div>
               )}
             </CardContent>
@@ -348,147 +359,43 @@ export default function EmployeeProjectProgressPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Tasks ({project.tasks.length})</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {project.tasks.map((task) => (
-                <div key={task.taskId} className="rounded-lg border p-3 space-y-2">
-                  <div>
-                    <p className="font-medium text-sm">{task.title}</p>
-                    <p className="text-xs text-muted-foreground">{task.serviceType}</p>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <Badge variant="secondary" className="text-xs">
-                      {task.status}
-                    </Badge>
-                  </div>
-                  {nextStatuses[task.status].length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 pt-1">
-                      {nextStatuses[task.status].map((status) => (
-                        <Button
-                          key={status}
-                          size="sm"
-                          variant={status === "Cancelled" ? "destructive" : "outline"}
-                          onClick={() => handleTaskStatus(task.taskId, status)}
-                          className="h-7 text-xs"
-                        >
-                          {status}
-                        </Button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Right Column - Progress Updates & Post Message */}
-        <div className="lg:col-span-2 space-y-4">
-          {/* Progress Update Messages */}
-          <Card className="h-[calc(100vh-28rem)]">
-            <CardHeader className="border-b">
               <div className="flex items-center justify-between">
-                <CardTitle>Progress Update Messages</CardTitle>
-                <Badge variant="secondary">{messages.length} updates</Badge>
+                <CardTitle className="text-lg">Tasks</CardTitle>
+                <Badge variant="secondary" className="text-xs">{project.tasks.length}</Badge>
               </div>
             </CardHeader>
-            <CardContent className="h-[calc(100%-5rem)] overflow-y-auto p-4">
-              <div ref={messagesTopRef} />
-              {messages.length === 0 ? (
-                <div className="flex h-full items-center justify-center">
-                  <div className="text-center">
-                    <Clock className="mx-auto h-12 w-12 text-muted-foreground/50" />
-                    <p className="mt-4 text-sm text-muted-foreground">
-                      No updates yet. Be the first to post a progress update!
-                    </p>
-                  </div>
-                </div>
+            <CardContent className="space-y-3">
+              {project.tasks.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">No tasks assigned yet.</p>
               ) : (
-                <div className="space-y-4">
-                  {messages.map((msg) => (
-                    <div
-                      key={msg.id}
-                      className="rounded-lg border bg-card p-4 transition-shadow hover:shadow-md"
-                    >
-                      <div className="flex items-start gap-3">
-                        <div
-                          className={`mt-0.5 rounded-full p-2 ${getCategoryColor(msg.category)}`}
-                        >
-                          {getCategoryIcon(msg.category)}
-                        </div>
-                        <div className="flex-1 space-y-2">
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <Badge variant="outline" className="text-xs">
-                                {msg.category}
-                              </Badge>
-                              <span className="text-xs text-muted-foreground">
-                                {formatDate(msg.occurredAt)}
-                              </span>
-                              <span className="text-xs text-muted-foreground">
-                                ({formatRelativeTime(msg.occurredAt)})
-                              </span>
-                            </div>
-                          </div>
-                          <p className="text-sm leading-relaxed">{msg.message}</p>
-                          {msg.payload && (
-                            <details className="text-xs">
-                              <summary className="cursor-pointer text-muted-foreground">
-                                View details
-                              </summary>
-                              <pre className="mt-2 rounded bg-muted p-2 overflow-x-auto">
-                                {JSON.stringify(JSON.parse(msg.payload), null, 2)}
-                              </pre>
-                            </details>
-                          )}
-                          {msg.attachmentUrl && (
-                            <div className="mt-3 space-y-2">
-                              {isImageFile(msg.attachmentContentType) ? (
-                                <div className="space-y-2">
-                                  <img
-                                    src={`${apiConfig.API_BASE_URL}${msg.attachmentUrl}`}
-                                    alt={msg.attachmentFilename || "Attachment"}
-                                    className="max-w-full h-auto rounded-lg border"
-                                    style={{ maxHeight: "400px" }}
-                                  />
-                                  <div className="flex items-center justify-between text-xs text-muted-foreground">
-                                    <span>{msg.attachmentFilename}</span>
-                                    <a
-                                      href={`${apiConfig.API_BASE_URL}${msg.attachmentUrl}`}
-                                      download={msg.attachmentFilename}
-                                      className="flex items-center gap-1 text-primary hover:underline"
-                                    >
-                                      <Download className="h-3 w-3" />
-                                      Download
-                                    </a>
-                                  </div>
-                                </div>
-                              ) : (
-                                <div className="flex items-center gap-2 rounded-md border p-3 bg-muted/50">
-                                  <FileText className="h-5 w-5 text-muted-foreground" />
-                                  <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-medium truncate">{msg.attachmentFilename}</p>
-                                    <p className="text-xs text-muted-foreground">
-                                      {msg.attachmentSize ? `${(msg.attachmentSize / 1024).toFixed(1)} KB` : ""}
-                                    </p>
-                                  </div>
-                                  <a
-                                    href={`${apiConfig.API_BASE_URL}${msg.attachmentUrl}`}
-                                    download={msg.attachmentFilename}
-                                    className="text-primary hover:underline flex items-center gap-1"
-                                  >
-                                    <Download className="h-4 w-4" />
-                                  </a>
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      </div>
+                project.tasks.map((task) => (
+                  <div key={task.taskId} className="rounded-lg border bg-card p-3 space-y-2.5 hover:shadow-sm transition-shadow">
+                    <div>
+                      <p className="font-medium text-sm leading-tight">{task.title}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{task.serviceType}</p>
                     </div>
-                  ))}
-                </div>
+                    <div className="flex items-center justify-between">
+                      <Badge variant="secondary" className="text-xs font-medium">
+                        {task.status}
+                      </Badge>
+                    </div>
+                    {nextStatuses[task.status].length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 pt-1 border-t">
+                        {nextStatuses[task.status].map((status) => (
+                          <Button
+                            key={status}
+                            size="sm"
+                            variant={status === "Cancelled" ? "destructive" : "outline"}
+                            onClick={() => handleTaskStatus(task.taskId, status)}
+                            className="h-7 text-xs font-medium"
+                          >
+                            {status}
+                          </Button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))
               )}
             </CardContent>
           </Card>
@@ -496,7 +403,7 @@ export default function EmployeeProjectProgressPage() {
           {/* Post Update Form */}
           <Card>
             <CardHeader>
-              <CardTitle>Post Update</CardTitle>
+              <CardTitle className="text-lg">Post Update</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
@@ -578,6 +485,122 @@ export default function EmployeeProjectProgressPage() {
                   </>
                 )}
               </Button>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Right Column - Progress Update Messages Only */}
+        <div className="lg:col-span-2" style={{ height: "calc(100vh - 10rem)" }}>
+          {/* Progress Update Messages */}
+          <Card className="flex flex-col h-full">
+            <CardHeader className="border-b flex-shrink-0">
+              <div className="flex items-center justify-between">
+                <CardTitle>Progress Update Messages</CardTitle>
+                <Badge variant="secondary">{messages.length} updates</Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="flex-1 overflow-y-auto p-4">
+              <div ref={messagesTopRef} />
+              {messages.length === 0 ? (
+                <div className="flex h-full items-center justify-center">
+                  <div className="text-center">
+                    <Clock className="mx-auto h-12 w-12 text-muted-foreground/50" />
+                    <p className="mt-4 text-sm text-muted-foreground">
+                      No updates yet. Be the first to post a progress update!
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {messages.map((msg) => (
+                    <div
+                      key={msg.id}
+                      className="rounded-lg border bg-card p-4 shadow-sm transition-all hover:shadow-md"
+                    >
+                      <div className="flex items-start gap-3">
+                        <div
+                          className={`mt-0.5 flex-shrink-0 rounded-full p-2 ${getCategoryColor(msg.category)}`}
+                        >
+                          {getCategoryIcon(msg.category)}
+                        </div>
+                        <div className="flex-1 min-w-0 space-y-2">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <Badge variant="outline" className="text-xs">
+                                {msg.category}
+                              </Badge>
+                              <span className="text-xs text-muted-foreground">
+                                {formatDate(msg.occurredAt)}
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                ({formatRelativeTime(msg.occurredAt)})
+                              </span>
+                            </div>
+                          </div>
+                          <p className="text-sm leading-relaxed">{msg.message}</p>
+                          {msg.payload && (
+                            <details className="text-xs">
+                              <summary className="cursor-pointer text-muted-foreground">
+                                View details
+                              </summary>
+                              <pre className="mt-2 rounded bg-muted p-2 overflow-x-auto">
+                                {JSON.stringify(JSON.parse(msg.payload), null, 2)}
+                              </pre>
+                            </details>
+                          )}
+                          {msg.attachmentUrl && (
+                            <div className="mt-3">
+                              {isImageFile(msg.attachmentContentType) ? (
+                                <div className="space-y-2">
+                                  <div className="relative group rounded-lg overflow-hidden border bg-muted/30">
+                                    <img
+                                      src={`${apiConfig.API_BASE_URL}${msg.attachmentUrl}`}
+                                      alt={msg.attachmentFilename || "Attachment"}
+                                      className="w-full h-auto object-contain cursor-pointer transition-opacity hover:opacity-90"
+                                      style={{ maxHeight: "320px", maxWidth: "100%" }}
+                                      onClick={() => window.open(`${apiConfig.API_BASE_URL}${msg.attachmentUrl}`, '_blank')}
+                                    />
+                                  </div>
+                                  <div className="flex items-center justify-between gap-2 px-1">
+                                    <span className="text-xs text-muted-foreground truncate flex-1">
+                                      {msg.attachmentFilename}
+                                    </span>
+                                    <a
+                                      href={`${apiConfig.API_BASE_URL}${msg.attachmentUrl}`}
+                                      download={msg.attachmentFilename}
+                                      className="flex items-center gap-1.5 text-xs text-primary hover:underline whitespace-nowrap"
+                                    >
+                                      <Download className="h-3 w-3" />
+                                      Download
+                                    </a>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-2 rounded-md border p-3 bg-muted/50">
+                                  <FileText className="h-5 w-5 text-muted-foreground" />
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium truncate">{msg.attachmentFilename}</p>
+                                    <p className="text-xs text-muted-foreground">
+                                      {msg.attachmentSize ? `${(msg.attachmentSize / 1024).toFixed(1)} KB` : ""}
+                                    </p>
+                                  </div>
+                                  <a
+                                    href={`${apiConfig.API_BASE_URL}${msg.attachmentUrl}`}
+                                    download={msg.attachmentFilename}
+                                    className="text-primary hover:underline flex items-center gap-1"
+                                  >
+                                    <Download className="h-4 w-4" />
+                                  </a>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
