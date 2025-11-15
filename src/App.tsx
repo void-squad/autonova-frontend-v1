@@ -38,6 +38,7 @@ import EmployeeTasks from "./pages/employee/tasks";
 import EmployeeReports from "./pages/employee/reports";
 import TimeLoggingPage from "./pages/employee/TimeLoggingPage";
 import EmployeeProjectProgress from "./pages/employee/ProjectProgress";
+import EmployeeProgressIndex from "./pages/employee/ProgressIndex";
 import EmployeeBilling from "./pages/employee/EmployeeBilling";
 
 // Admin pages
@@ -101,6 +102,7 @@ const NotificationsRoute = () => {
 };
 import UserManagement from "./pages/admin/UserManagement";
 import CustomerProgressIndex from "./pages/customer/ProgressIndex";
+import AdminProgressIndex from "./pages/admin/ProgressIndex";
 
 const queryClient = new QueryClient();
 
@@ -186,6 +188,7 @@ const App = () => {
                 >
                   <Route index element={<Navigate to="/employee/dashboard" replace />} />
                   <Route path="dashboard" element={<EmployeeDashboard />} />
+                  <Route path="progress" element={<EmployeeProgressIndex />} />
                   <Route path="time-logging" element={<TimeLoggingPage />} />
                   <Route path="tasks" element={<EmployeeTasks />} />
                   <Route path="services" element={<EmployeeServices />} />
@@ -206,6 +209,7 @@ const App = () => {
                 >
                   <Route index element={<Navigate to="/admin/dashboard" replace />} />
                   <Route path="dashboard" element={<AdminDashboard />} />
+                  <Route path="progress" element={<AdminProgressIndex />} />
                   <Route path="employees" element={<AdminEmployees />} />
                   <Route path="employees/:id" element={<EmployeeDetail />} />
                   <Route path="time-logging" element={<AdminTimeLoggingPage />} />

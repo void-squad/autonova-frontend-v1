@@ -22,6 +22,7 @@ const navigation = [
   { name: 'Billing', href: '/admin/billing', icon: CreditCard },
   { name: 'Time Logs', href: '/admin/time-logging', icon: Clock },
   { name: 'Analytics', href: '/admin/analytics', icon: BarChart3 },
+  { name: 'Progress', href: '/admin/progress', icon: BarChart3 },
   { name: 'Notifications', href: '/admin/notifications', icon: Bell },
   { name: 'Help', href: '/help', icon: HelpCircle },
 ];

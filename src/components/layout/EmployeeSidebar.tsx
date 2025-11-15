@@ -1,10 +1,11 @@
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, ClipboardList, Clock, Wrench, FileText, HelpCircle, CreditCard } from 'lucide-react';
+import { LayoutDashboard, ClipboardList, Clock, Wrench, FileText, HelpCircle, CreditCard, TrendingUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navigation = [
   { name: 'Dashboard', href: '/employee/dashboard', icon: LayoutDashboard },
   { name: 'My Tasks', href: '/employee/tasks', icon: ClipboardList },
+  { name: 'Progress', href: '/employee/progress', icon: TrendingUp },
   { name: 'Time Logs', href: '/employee/time-logging', icon: Clock },
   { name: 'Billing', href: '/employee/billing', icon: CreditCard },
   { name: 'Projects', href: '/employee/projects', icon: Wrench },
