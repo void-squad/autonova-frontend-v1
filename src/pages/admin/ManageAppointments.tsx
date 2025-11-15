@@ -2,11 +2,21 @@ import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, RefreshCcw, Calendar, ShieldCheck } from "lucide-react";
-import { listAdminAppointments, updateAdminAppointmentStatus } from "@/services/projectService";
+import { convertAppointmentToProject, listAdminAppointments, updateAdminAppointmentStatus } from "@/services/projectService";
 import type { AdminAppointment } from "@/types/appointment";
+import type { ProjectDetails } from "@/types/project";
+import { Link } from "react-router-dom";
 
 const formatDateTime = (value?: string) => (value ? new Date(value).toLocaleString() : "—");
 
@@ -22,6 +32,9 @@ export default function ManageAppointments() {
   const [fromDate, setFromDate] = useState("");
   const [search, setSearch] = useState("");
   const [submittingId, setSubmittingId] = useState<string | null>(null);
+  const [convertingId, setConvertingId] = useState<string | null>(null);
+  const [conversionResult, setConversionResult] = useState<ProjectDetails | null>(null);
+  const [existingProjectPrompt, setExistingProjectPrompt] = useState<{ appointmentId: string; projectId: string } | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -66,6 +79,32 @@ export default function ManageAppointments() {
     } finally {
       setSubmittingId(null);
     }
+  };
+
+  const handleConvert = async (id: string, targetProjectId?: string) => {
+    try {
+      setConvertingId(id);
+      const project = await convertAppointmentToProject(id, targetProjectId);
+      setConversionResult(project);
+      const refreshed = await listAdminAppointments(status === "ALL" ? undefined : status, fromDate ? new Date(fromDate).toISOString() : undefined, undefined);
+      setAppointments(refreshed);
+    } catch (err) {
+      const apiError = err as Error & { status?: number; body?: any };
+      if (apiError?.status === 409 && apiError.body?.code === "ProjectExists" && apiError.body?.projectId) {
+        setExistingProjectPrompt({ appointmentId: id, projectId: apiError.body.projectId });
+      } else {
+        alert(err instanceof Error ? err.message : "Unable to convert appointment to project");
+      }
+    } finally {
+      setConvertingId(null);
+    }
+  };
+
+  const handleAttachToExisting = async () => {
+    if (!existingProjectPrompt) return;
+    const { appointmentId, projectId } = existingProjectPrompt;
+    setExistingProjectPrompt(null);
+    await handleConvert(appointmentId, projectId);
   };
 
   const stats = useMemo(() => {
@@ -201,6 +240,14 @@ export default function ManageAppointments() {
                       >
                         Cancel
                       </Button>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        disabled={convertingId === appt.id}
+                        onClick={() => handleConvert(appt.id)}
+                      >
+                        Convert to project
+                      </Button>
                     </div>
                   </div>
                 ))
@@ -209,6 +256,52 @@ export default function ManageAppointments() {
           </Card>
         )}
       </div>
+      <Dialog open={!!conversionResult} onOpenChange={(open) => !open && setConversionResult(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Project created</DialogTitle>
+            <DialogDescription>Appointment successfully converted into a project.</DialogDescription>
+          </DialogHeader>
+          {conversionResult && (
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Project <span className="font-mono">{conversionResult.projectId}</span> for vehicle{" "}
+                <span className="font-mono">{conversionResult.vehicleId}</span>.
+              </p>
+              <p className="text-sm text-muted-foreground">Tasks created: {conversionResult.tasks.length}</p>
+            </div>
+          )}
+          <DialogFooter className="flex flex-col sm:flex-row sm:justify-end gap-2">
+            <Button variant="outline" onClick={() => setConversionResult(null)}>
+              Close
+            </Button>
+            {conversionResult && (
+              <Button asChild>
+                <Link to={`/admin/projects/${conversionResult.projectId}`}>View project</Link>
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={!!existingProjectPrompt} onOpenChange={(open) => !open && setExistingProjectPrompt(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Project already exists</DialogTitle>
+            <DialogDescription>
+              A project for this vehicle already exists. Would you like to add this appointment as a task on project{" "}
+              <span className="font-mono">{existingProjectPrompt?.projectId}</span>?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex flex-col sm:flex-row sm:justify-end gap-2">
+            <Button variant="outline" onClick={() => setExistingProjectPrompt(null)}>
+              Cancel
+            </Button>
+            <Button disabled={convertingId === existingProjectPrompt?.appointmentId} onClick={handleAttachToExisting}>
+              Yes, add as task
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

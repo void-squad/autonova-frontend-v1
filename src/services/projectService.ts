@@ -3,7 +3,6 @@ import type {
   ProjectSummary,
   ProjectDetails,
   ApproveProjectPayload,
-  CreateTaskPayload,
   ProjectTask,
   TaskStatus,
 } from "@/types/project";
@@ -39,13 +38,6 @@ export const getAdminProject = async (projectId: string): Promise<ProjectDetails
 
 export const approveProject = async (projectId: string, payload: ApproveProjectPayload): Promise<void> => {
   await projectApi(`/api/admin/projects/${projectId}/approve`, {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
-};
-
-export const createAdminTask = async (projectId: string, payload: CreateTaskPayload): Promise<ProjectTask> => {
-  return projectApi<ProjectTask>(`/api/admin/projects/${projectId}/tasks`, {
     method: "POST",
     body: JSON.stringify(payload),
   });
@@ -93,4 +85,23 @@ export const updateAdminAppointmentStatus = async (id: string, status: string, a
     method: "PATCH",
     body: JSON.stringify({ status, adminNote }),
   });
+};
+
+export const convertAppointmentToProject = async (id: string, projectId?: string): Promise<ProjectDetails> => {
+  return projectApi<ProjectDetails>(`/api/admin/appointments/${id}/convert`, {
+    method: "POST",
+    body: projectId ? JSON.stringify({ projectId }) : undefined,
+  });
+};
+
+export interface EmployeeOption {
+  id: string;
+  userName: string;
+  firstName?: string;
+  lastName?: string;
+  email: string;
+}
+
+export const listActiveEmployees = async (): Promise<EmployeeOption[]> => {
+  return api<EmployeeOption[]>("/api/users?role=EMPLOYEE&status=active");
 };
