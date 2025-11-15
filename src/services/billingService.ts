@@ -1,5 +1,5 @@
 import axios, { AxiosResponseHeaders, RawAxiosResponseHeaders } from 'axios';
-import { BillingInvoice, InvoiceListQueryParams, InvoiceListResponse } from '@/types';
+import { BillingInvoice, InvoiceListQueryParams, InvoiceListResponse, PaymentIntentResponse } from '@/types';
 import { getAccessToken } from '@/lib/auth';
 
 const sanitizeBaseUrl = (url: string) => url.replace(/\/+$/, '');
@@ -59,9 +59,31 @@ export const listInvoices = async (params: InvoiceListQueryParams): Promise<Invo
   }
 };
 
+export const getInvoice = async (id: string): Promise<BillingInvoice> => {
+  try {
+    const response = await billingClient.get<BillingInvoice>(`/invoices/${id}`, {
+      headers: authHeaders(),
+    });
+    return response.data;
+  } catch (error) {
+    throw toError(error);
+  }
+};
+
 export const markInvoicePaid = async (id: string): Promise<BillingInvoice> => {
   try {
     const response = await billingClient.post<BillingInvoice>(`/invoices/${id}/mark-paid`, undefined, {
+      headers: authHeaders(),
+    });
+    return response.data;
+  } catch (error) {
+    throw toError(error);
+  }
+};
+
+export const createPaymentIntent = async (id: string): Promise<PaymentIntentResponse> => {
+  try {
+    const response = await billingClient.post<PaymentIntentResponse>(`/invoices/${id}/payment-intent`, undefined, {
       headers: authHeaders(),
     });
     return response.data;

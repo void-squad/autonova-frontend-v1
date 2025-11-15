@@ -14,7 +14,5 @@ export const EMPLOYEE_ROUTES = {
   billing: '/employee/billing',
   tasks: '/employee/tasks',
   timeLogs: '/employee/time-logs',
-  projects: '/employee/projects',
-  projectProgress: (projectId = ':projectId') => `/employee/projects/${projectId}/progress`,
   reports: '/employee/reports',
 } as const;

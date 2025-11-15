@@ -20,11 +20,35 @@ export default function BookAppointment() {
   const [formData, setFormData] = useState({ vehicleId: '', serviceType: '', appointmentDate: '', timeSlot: '', notes: '' });
 
   useEffect(() => {
-    if (formData.appointmentDate) {
-      setLoadingSlots(true);
-      setTimeout(() => { setAvailableSlots(mockTimeSlots); setLoadingSlots(false); }, 500);
-    }
-  }, [formData.appointmentDate]);
+  if (formData.appointmentDate) {
+    setLoadingSlots(true);
+
+    // Construct start/end for that date
+    const start = `${formData.appointmentDate}T09:00:00+05:30`;
+    const end = `${formData.appointmentDate}T18:00:00+05:30`;
+
+    fetch(`/api/v1/appointments/availability/slots?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`)
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to fetch slots");
+        return res.json();
+      })
+      .then((data) => {
+        // Convert the slot objects [{start, end}, ...] into display strings like "09:00 AM"
+        const slots = data.map(slot => {
+          const date = new Date(slot.start);
+          return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+        });
+        setAvailableSlots(slots);
+      })
+      .catch((err) => {
+        console.error("Error fetching slots:", err);
+        setAvailableSlots([]);
+      })
+      .finally(() => setLoadingSlots(false));
+  }
+}, [formData.appointmentDate]);
+
+
 
   const validate = () => {
     const newErrors = {};
@@ -36,11 +60,68 @@ export default function BookAppointment() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = () => {
-    if (!validate()) return;
-    setLoading(true);
-    setTimeout(() => { alert('Appointment booked successfully! Status: Pending'); setLoading(false); }, 1000);
-  };
+ // Extract customer ID from localStorage
+  const userStr = localStorage.getItem("authUser");
+  const user = userStr ? JSON.parse(userStr) : null;
+  const customerId = user?.id;
+
+  // Convert numeric ID to UUID-like string for backend
+  const customerUuid = customerId ? `00000000-0000-0000-0000-${String(customerId).padStart(12, '0')}` : null;
+
+  const handleSubmit = async () => {
+  if (!validate()) return;
+
+  setLoading(true);
+  setErrors({});
+
+  try {
+    // Example: convert timeSlot and appointmentDate to ISO timestamps
+    const start = new Date(`${formData.appointmentDate}T${convertTo24Hour(formData.timeSlot)}:00+05:30`);
+
+    const end = new Date(start.getTime() + 60 * 60 * 1000); // +1 hour slot
+
+    const payload = {
+  customerId: customerUuid, // or just customerId if backend accepts number
+  customerUsername: user.userName,
+  vehicleId: "11111111-1111-1111-1111-111111111111",
+  vehicleName: vehicles.find(v => v.id === formData.vehicleId)?.name || "Unknown",
+  serviceType: formData.serviceType,
+  startTime: start.toISOString(),
+  endTime: end.toISOString(),
+  preferredEmployeeId: null,
+  notes: formData.notes
+};
+
+
+    const res = await fetch("/api/v1/appointments", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(errText || "Failed to create appointment");
+    }
+
+    const data = await res.json();
+    alert(`Appointment booked successfully! Status: ${data.status}`);
+  } catch (err) {
+    alert(`Error: ${err.message}`);
+  } finally {
+    setLoading(false);
+  }
+};
+
+// helper function to convert "09:00 AM" → "09:00" and "01:00 PM" → "13:00"
+function convertTo24Hour(time12h) {
+  const [time, modifier] = time12h.split(" ");
+  let [hours, minutes] = time.split(":");
+  if (hours === "12") hours = "00";
+  if (modifier === "PM") hours = String(parseInt(hours, 10) + 12);
+  return `${hours}:${minutes}`;
+}
+
 
   return (
     <div className="min-h-screen bg-gray-50">

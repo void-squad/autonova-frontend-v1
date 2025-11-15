@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -41,8 +41,154 @@ import {
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { adminApi } from '@/lib/api/admin';
 import { EmployeeWithStats, EmployeeTask, EmployeeWorkload } from '@/types/admin';
+
+// Mock data for employee details
+const getMockEmployeeData = (id: string) => {
+  const baseEmployee = {
+    id,
+    userName: 'John Martinez',
+    email: 'john.martinez@autonova.com',
+    contactOne: '+1 (555) 123-4567',
+    contactTwo: '+1 (555) 123-4568',
+    address: '123 Main St, Los Angeles, CA 90001',
+    hireDate: '2023-01-15',
+    specialization: 'Engine Specialist',
+    status: 'active' as const,
+    role: 'EMPLOYEE' as const,
+    createdAt: '2023-01-15T08:00:00Z',
+    updatedAt: '2023-01-15T08:00:00Z',
+    stats: {
+      assignedTasks: 8,
+      inProgressTasks: 3,
+      completedTasks: 45,
+      completedThisMonth: 12,
+      hoursThisMonth: 156,
+      efficiency: 92,
+      averageRating: 4.7,
+    },
+  };
+
+  return baseEmployee;
+};
+
+const MOCK_TASKS: EmployeeTask[] = [
+  {
+    id: 'task-1',
+    title: 'Oil Change & Filter Replacement',
+    customer: 'John Smith',
+    vehicle: 'Toyota Camry 2022',
+    type: 'service',
+    priority: 'urgent',
+    status: 'assigned',
+    dueDate: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
+    employeeId: '1',
+    employeeName: 'John Martinez',
+  },
+  {
+    id: 'task-2',
+    title: 'Brake Pad Replacement',
+    customer: 'Sarah Johnson',
+    vehicle: 'Honda Accord 2021',
+    type: 'service',
+    priority: 'high',
+    status: 'in_progress',
+    dueDate: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+    employeeId: '1',
+    employeeName: 'John Martinez',
+  },
+  {
+    id: 'task-3',
+    title: 'Custom Exhaust System',
+    customer: 'Mike Wilson',
+    vehicle: 'BMW M3 2023',
+    type: 'project',
+    priority: 'normal',
+    status: 'in_progress',
+    dueDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
+    employeeId: '1',
+    employeeName: 'John Martinez',
+  },
+  {
+    id: 'task-4',
+    title: 'Transmission Service',
+    customer: 'David Brown',
+    vehicle: 'Ford F-150 2020',
+    type: 'service',
+    priority: 'urgent',
+    status: 'assigned',
+    dueDate: new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString(),
+    employeeId: '1',
+    employeeName: 'John Martinez',
+  },
+  {
+    id: 'task-5',
+    title: 'Interior Customization',
+    customer: 'Emily Davis',
+    vehicle: 'Mercedes-Benz C-Class 2023',
+    type: 'project',
+    priority: 'high',
+    status: 'in_progress',
+    dueDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
+    employeeId: '1',
+    employeeName: 'John Martinez',
+  },
+  {
+    id: 'task-6',
+    title: 'AC System Repair',
+    customer: 'Jessica Taylor',
+    vehicle: 'Nissan Altima 2021',
+    type: 'service',
+    priority: 'urgent',
+    status: 'overdue',
+    dueDate: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+    employeeId: '1',
+    employeeName: 'John Martinez',
+  },
+  {
+    id: 'task-7',
+    title: 'Wheel Alignment',
+    customer: 'Robert Miller',
+    vehicle: 'Tesla Model 3 2022',
+    type: 'service',
+    priority: 'normal',
+    status: 'assigned',
+    dueDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
+    employeeId: '1',
+    employeeName: 'John Martinez',
+  },
+  {
+    id: 'task-8',
+    title: 'Battery Replacement',
+    customer: 'Amanda White',
+    vehicle: 'Chevrolet Silverado 2019',
+    type: 'service',
+    priority: 'normal',
+    status: 'completed',
+    dueDate: new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString(),
+    employeeId: '1',
+    employeeName: 'John Martinez',
+  },
+];
+
+const MOCK_WORKLOAD: EmployeeWorkload = {
+  employeeId: '1',
+  employeeName: 'John Martinez',
+  totalTasks: 8,
+  inProgressTasks: 3,
+  urgentTasks: 3,
+  overdueTasks: 1,
+  utilizationRate: 85,
+  availableCapacity: 15,
+};
+
+const MOCK_ALL_EMPLOYEES = [
+  { id: '2', userName: 'Sarah Chen' },
+  { id: '3', userName: 'Michael Johnson' },
+  { id: '5', userName: 'David Kim' },
+  { id: '6', userName: 'Lisa Anderson' },
+  { id: '7', userName: 'Robert Taylor' },
+];
 
 export default function EmployeeDetail() {
   const { id } = useParams<{ id: string }>();
@@ -57,49 +203,48 @@ export default function EmployeeDetail() {
   const [reassignToId, setReassignToId] = useState('');
   const [reassignReason, setReassignReason] = useState('');
 
-  const loadData = useCallback(async () => {
+  const loadData = async () => {
     if (!id) return;
 
     try {
       setLoading(true);
-      const [employeeData, tasksData, workloadData, employeesData] = await Promise.all([
-        adminApi.getEmployeeById(id),
-        adminApi.getEmployeeTasks(id),
-        adminApi.getEmployeeWorkload(id),
-        adminApi.getAllEmployees(),
-      ]);
+      
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 800));
+      
+      // Use mock data
+      const employeeData = getMockEmployeeData(id);
       setEmployee(employeeData);
-      setTasks(tasksData);
-      setWorkload(workloadData);
-      setAllEmployees(
-        employeesData.filter((e) => e.id !== id && e.status === 'active')
-      );
+      setTasks(MOCK_TASKS);
+      setWorkload(MOCK_WORKLOAD);
+      setAllEmployees(MOCK_ALL_EMPLOYEES);
     } catch (error) {
-      const err = error as { response?: { data?: { message?: string } } };
+      console.error('Failed to load employee details:', error);
       toast({
         title: 'Error',
-        description: err.response?.data?.message || 'Failed to load employee details',
+        description: 'Failed to load employee details',
         variant: 'destructive',
       });
     } finally {
       setLoading(false);
     }
-  }, [id, toast]);
+  };
 
   useEffect(() => {
     loadData();
-  }, [loadData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
 
   const handleReassignTask = async () => {
     if (!selectedTask || !reassignToId || !id) return;
 
     try {
-      await adminApi.reassignTask({
-        taskId: selectedTask.id,
-        fromEmployeeId: id,
-        toEmployeeId: reassignToId,
-        reason: reassignReason,
-      });
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Update task assignment in mock data
+      setTasks(tasks.filter(t => t.id !== selectedTask.id));
+      
       toast({
         title: 'Success',
         description: 'Task reassigned successfully',
@@ -108,12 +253,10 @@ export default function EmployeeDetail() {
       setSelectedTask(null);
       setReassignToId('');
       setReassignReason('');
-      loadData();
     } catch (error) {
-      const err = error as { response?: { data?: { message?: string } } };
       toast({
         title: 'Error',
-        description: err.response?.data?.message || 'Failed to reassign task',
+        description: 'Failed to reassign task',
         variant: 'destructive',
       });
     }
