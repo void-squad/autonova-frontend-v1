@@ -9,6 +9,7 @@ import {
   FileText,
   HelpCircle,
   UserCircle,
+  Activity,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -23,7 +24,7 @@ const navigation = [
   },
   { name: 'My Appointments', href: '/customer/appointments', icon: Calendar },
   { name: 'Modifications', href: '/customer/modifications', icon: Wrench },
-  { name: 'Service Progress', href: '/customer/progress', icon: TrendingUp },
+  { name: 'Progress Monitoring', href: '/customer/progress-monitoring', icon: Activity },
   { name: 'Billing', href: '/customer/billing', icon: CreditCard },
   { name: 'Reports', href: '/customer/reports', icon: FileText },
   { name: 'Help', href: '/help', icon: HelpCircle },
