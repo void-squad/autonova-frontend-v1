@@ -7,7 +7,9 @@ export default defineConfig(() => ({
     host: '::',
     proxy: {
       '/api': {
-        target: 'http://localhost:8088', // Backend base URL
+        // Forward frontend /api requests to the API gateway (port 8080).
+        // The gateway is responsible for routing to the actual services (e.g. book-appointment-service on 8088).
+        target: 'http://localhost:8080', // Gateway base URL
         changeOrigin: true,
         secure: false,
       },
