@@ -1,60 +1,115 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { User } from '@/types';
-import { authApi, LoginInput, SignupInput } from '@/lib/api/auth';
-import { getAccessToken } from '@/lib/api/client';
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  ReactNode,
+} from 'react';
+import * as authService from '@/services/authService';
+import type { AuthUser } from '@/types';
+import type { MessageResponse } from '@/services/authService';
+
+interface LoginCredentials {
+  email: string;
+  password: string;
+}
+
+interface SignupData {
+  userName: string;
+  email: string;
+  password: string;
+  contactNumber: string;
+  role: 'CUSTOMER' | 'EMPLOYEE' | 'ADMIN';
+}
 
 interface AuthContextType {
-  user: User | null;
+  user: AuthUser | null;
   loading: boolean;
-  login: (credentials: LoginInput) => Promise<void>;
-  signup: (data: SignupInput) => Promise<void>;
+  login: (credentials: LoginCredentials) => Promise<AuthUser>;
+  signup: (data: SignupData) => Promise<MessageResponse>;
   logout: () => Promise<void>;
-  loginWithGoogle: () => Promise<void>;
   isAuthenticated: boolean;
+  updateUser: (updates: Partial<AuthUser>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(() =>
+    authService.getStoredUser()
+  );
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     // Check if user is already authenticated
     const initAuth = async () => {
-      const token = getAccessToken();
-      if (token) {
-        try {
-          const currentUser = await authApi.getCurrentUser();
-          setUser(currentUser);
-        } catch (error) {
-          console.error('Failed to get current user:', error);
-        }
+      if (!authService.isAuthenticated()) {
+        setUser(null);
+        setLoading(false);
+        return;
       }
-      setLoading(false);
+
+      const storedUser = authService.getStoredUser();
+      if (storedUser) {
+        setUser(storedUser);
+      }
+
+      try {
+        await authService.getProfile();
+      } catch (error) {
+        console.error('Failed to validate current session:', error);
+        authService.logout();
+        setUser(null);
+      } finally {
+        setLoading(false);
+      }
     };
 
     initAuth();
   }, []);
 
-  const login = async (credentials: LoginInput) => {
-    const response = await authApi.login(credentials);
-    setUser(response.user);
+  const login = async (credentials: LoginCredentials) => {
+    const loggedInUser = await authService.login(
+      credentials.email,
+      credentials.password
+    );
+    setUser(loggedInUser);
+    return loggedInUser;
   };
 
-  const signup = async (data: SignupInput) => {
-    const response = await authApi.signup(data);
-    setUser(response.user);
+  const signup = async (data: SignupData) => {
+    return authService.register({
+      userName: data.userName,
+      email: data.email,
+      password: data.password,
+      contactOne: data.contactNumber,
+      role: data.role,
+    });
   };
 
   const logout = async () => {
-    await authApi.logout();
+    authService.logout();
     setUser(null);
   };
 
-  const loginWithGoogle = async () => {
-    const { url } = await authApi.getGoogleAuthUrl();
-    window.location.href = url;
+  const updateUser = (updates: Partial<AuthUser>) => {
+    setUser((prev) => {
+      if (!prev) {
+        return prev;
+      }
+
+      const filteredUpdates = Object.fromEntries(
+        Object.entries(updates).filter(([, value]) => value !== undefined)
+      ) as Partial<AuthUser>;
+
+      if (Object.keys(filteredUpdates).length === 0) {
+        return prev;
+      }
+
+      const nextUser = { ...prev, ...filteredUpdates };
+      authService.storeUser(nextUser);
+      return nextUser;
+    });
   };
 
   return (
@@ -65,8 +120,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         login,
         signup,
         logout,
-        loginWithGoogle,
         isAuthenticated: !!user,
+        updateUser,
       }}
     >
       {children}
