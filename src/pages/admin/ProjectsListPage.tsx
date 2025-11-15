@@ -1,116 +1,63 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { format } from "date-fns";
-
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import AdminSidebar from "@/components/layout/AdminSidebar";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
-import { DataTable, type DataTableColumn } from "@/components/projects/DataTable";
-import { FilterBar, type ProjectFilterValue } from "@/components/projects/FilterBar";
 import { StatusBadge } from "@/components/projects/StatusBadge";
-import { computeProjectList, useProjectsStore } from "@/contexts/ProjectsStore";
-import type { Project } from "@/types/project";
+import { listAdminProjects } from "@/services/projectService";
+import type { ProjectSummary, ProjectStatus } from "@/types/project";
 
-const PAGE_SIZE = 10;
+const statusOptions: Array<{ label: string; value?: ProjectStatus }> = [
+  { label: "All", value: undefined },
+  { label: "Pending review", value: "PendingReview" },
+  { label: "Approved", value: "Approved" },
+  { label: "In progress", value: "InProgress" },
+  { label: "Completed", value: "Completed" },
+  { label: "Cancelled", value: "Cancelled" },
+];
+
+const formatDate = (value?: string) => (value ? new Date(value).toLocaleDateString() : "—");
 
 export default function ProjectsListPage() {
   const navigate = useNavigate();
-  const { listProjects, projects: storeProjects } = useProjectsStore();
-
-  const [filters, setFilters] = useState<ProjectFilterValue>({});
-  const [page, setPage] = useState(1);
-  const [projects, setProjects] = useState<Project[]>(() =>
-    computeProjectList(storeProjects, { page: 1, pageSize: PAGE_SIZE }).data,
-  );
-  const [total, setTotal] = useState(() => computeProjectList(storeProjects, { page: 1, pageSize: PAGE_SIZE }).total);
-  const [loading, setLoading] = useState(() => storeProjects.length === 0);
+  const [projects, setProjects] = useState<ProjectSummary[]>([]);
+  const [status, setStatus] = useState<ProjectStatus | undefined>();
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [hasLoadedOnce, setHasLoadedOnce] = useState(() => storeProjects.length > 0);
 
   useEffect(() => {
     let active = true;
-    const params = { ...filters, page, pageSize: PAGE_SIZE };
 
-    const snapshot = computeProjectList(storeProjects, params);
-    setProjects(snapshot.data);
-    setTotal(snapshot.total);
-
-    const fetchProjects = async () => {
+    const load = async () => {
       try {
+        setLoading(true);
         setError(null);
-        if (!hasLoadedOnce) {
-          setLoading(true);
-        }
-
-        const result = await listProjects(params);
+        const data = await listAdminProjects(status);
         if (!active) return;
-        setProjects(result.data);
-        setTotal(result.total);
-        setHasLoadedOnce(true);
-      } catch (err: any) {
+        setProjects(data);
+      } catch (err) {
         if (!active) return;
-        setError(err?.message ?? "Failed to load projects.");
+        setError(err instanceof Error ? err.message : "Failed to load projects");
       } finally {
         if (!active) return;
         setLoading(false);
       }
     };
 
-    fetchProjects();
-
+    load();
     return () => {
       active = false;
     };
-  }, [filters, page, listProjects, storeProjects, hasLoadedOnce]);
-
-  const columns = useMemo<DataTableColumn<Project>[]>(
-    () => [
-      {
-        id: "code",
-        header: "Code",
-        cell: (project) => <span className="font-medium">{project.code}</span>,
-      },
-      {
-        id: "title",
-        header: "Title",
-        cell: (project) => (
-          <div className="space-y-1">
-            <p className="font-medium">{project.title}</p>
-            <p className="text-xs text-muted-foreground">{project.customerName}</p>
-          </div>
-        ),
-      },
-      {
-        id: "status",
-        header: "Status",
-        cell: (project) => <StatusBadge status={project.status} />,
-      },
-      {
-        id: "createdAt",
-        header: "Created",
-        cell: (project) => format(new Date(project.createdAt), "PP"),
-      },
-      {
-        id: "updatedAt",
-        header: "Updated",
-        cell: (project) => format(new Date(project.updatedAt), "PP"),
-      },
-      {
-        id: "actions",
-        header: "Actions",
-        className: "text-right",
-        headerClassName: "text-right",
-        cell: (project) => (
-          <Button size="sm" variant="outline" onClick={() => navigate(`/admin/projects/${project.id}`)}>
-            View
-          </Button>
-        ),
-      },
-    ],
-    [navigate],
-  );
+  }, [status]);
 
   return (
     <DashboardLayout sidebar={<AdminSidebar />}>
@@ -118,45 +65,102 @@ export default function ProjectsListPage() {
         <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
           <div>
             <h1 className="text-2xl font-bold">Projects</h1>
-            <p className="text-muted-foreground">Review incoming modification requests and manage approvals.</p>
+            <p className="text-muted-foreground">Review customer modification requests and approvals.</p>
           </div>
-          <Button onClick={() => navigate("/admin/projects/new")}>New project</Button>
         </div>
 
-        <FilterBar
-          value={filters}
-          onChange={(next) => {
-            setFilters(next);
-            setPage(1);
-          }}
-        />
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-muted-foreground">Status</label>
+            <Select
+              value={status ?? "all"}
+              onValueChange={(value) =>
+                setStatus(value === "all" ? undefined : (value as ProjectStatus))
+              }
+            >
+              <SelectTrigger className="w-56">
+                <SelectValue placeholder="All statuses" />
+              </SelectTrigger>
+              <SelectContent>
+                {statusOptions.map((option) => (
+                  <SelectItem
+                    key={option.label}
+                    value={option.value ?? "all"}
+                  >
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
 
-        {error && !hasLoadedOnce ? (
+        {error ? (
           <Card>
-            <CardContent className="flex flex-col items-center justify-center gap-3 py-10 text-center">
-              <p className="font-medium text-destructive">Something went wrong</p>
-              <p className="max-w-md text-sm text-muted-foreground">{error}</p>
-              <Button variant="outline" onClick={() => setFilters({ ...filters })}>
-                Try again
+            <CardContent className="py-10 text-center">
+              <p className="font-semibold text-destructive">{error}</p>
+              <Button size="sm" variant="outline" className="mt-3" onClick={() => setStatus(status)}>
+                Retry
               </Button>
             </CardContent>
           </Card>
-        ) : !hasLoadedOnce && loading ? (
+        ) : loading ? (
           <div className="space-y-4">
-            <Skeleton className="h-16 w-full" />
+            <Skeleton className="h-10 w-full" />
             <Skeleton className="h-64 w-full" />
           </div>
         ) : (
-          <DataTable
-            columns={columns}
-            data={projects}
-            loading={!hasLoadedOnce && loading}
-            page={page}
-            pageSize={PAGE_SIZE}
-            total={total}
-            onPageChange={setPage}
-            emptyMessage="No projects match the current filters."
-          />
+          <div className="overflow-hidden rounded-md border">
+            <table className="min-w-full divide-y divide-border text-sm">
+              <thead className="bg-muted/50">
+                <tr>
+                  <th className="px-4 py-3 text-left font-medium">Title</th>
+                  <th className="px-4 py-3 text-left font-medium">Status</th>
+                  <th className="px-4 py-3 text-left font-medium">Requested window</th>
+                  <th className="px-4 py-3 text-left font-medium">Approved window</th>
+                  <th className="px-4 py-3 text-left font-medium">Created</th>
+                  <th className="px-4 py-3 text-left font-medium">Updated</th>
+                  <th className="px-4 py-3 text-right font-medium">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {projects.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="px-4 py-6 text-center text-muted-foreground">
+                      No projects match the selected filters.
+                    </td>
+                  </tr>
+                ) : (
+                  projects.map((project) => (
+                    <tr key={project.projectId} className="hover:bg-muted/25">
+                      <td className="px-4 py-3">
+                        <div className="font-medium">{project.title}</div>
+                        <div className="text-xs text-muted-foreground">
+                          Vehicle: {project.vehicleId}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <StatusBadge status={project.status} />
+                      </td>
+                      <td className="px-4 py-3 text-xs text-muted-foreground">
+                        {formatDate(project.requestedStart)} – {formatDate(project.requestedEnd)}
+                      </td>
+                      <td className="px-4 py-3 text-xs text-muted-foreground">
+                        {formatDate(project.approvedStart)} – {formatDate(project.approvedEnd)}
+                      </td>
+                      <td className="px-4 py-3">{formatDate(project.createdAt)}</td>
+                      <td className="px-4 py-3">{formatDate(project.updatedAt)}</td>
+                      <td className="px-4 py-3 text-right">
+                        <Button size="sm" variant="outline" onClick={() => navigate(`/admin/projects/${project.projectId}`)}>
+                          View
+                        </Button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </DashboardLayout>
