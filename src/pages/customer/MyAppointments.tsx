@@ -26,7 +26,8 @@ export default function MyAppointments() {
     ? `00000000-0000-0000-0000-${String(customerId).padStart(12, '0')}`
     : null;
 
-  const API_BASE = "http://localhost:8080/api/v1/appointments";
+  // Use relative API path so dev proxy/gateway handles routing (vite proxy -> http://localhost:8088)
+  const API_BASE = '/api/v1/appointments';
 
   // --- Fetch Appointments (Real API Call) ---
   const fetchAppointments = useCallback(async () => {

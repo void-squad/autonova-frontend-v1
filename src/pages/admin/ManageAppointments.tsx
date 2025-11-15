@@ -17,7 +17,7 @@ export default function AppointmentManagement() {
     const fetchAppointments = async () => {
       try {
         setLoading(true);
-        const res = await fetch('http://localhost:8080/api/v1/appointments/all', {
+        const res = await fetch('/api/v1/appointments/all', {
           headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
         });
         if (!res.ok) throw new Error('Failed to fetch appointments');
@@ -52,7 +52,7 @@ export default function AppointmentManagement() {
   useEffect(() => {
     const fetchEmployees = async () => {
       try {
-        const res = await fetch('http://localhost:8080/api/v1/employees', {
+        const res = await fetch('/api/v1/employees', {
           headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
         });
         if (!res.ok) throw new Error('Failed to fetch employees');
@@ -82,7 +82,7 @@ export default function AppointmentManagement() {
     if (!confirm(`Are you sure you want to mark this as ${newStatus}?`)) return;
 
     try {
-      const res = await fetch(`http://localhost:8080/api/v1/appointments/${id}/status?status=${newStatus}`, {
+      const res = await fetch(`/api/v1/appointments/${id}/status?status=${newStatus}`, {
         method: 'PUT',
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
       });
