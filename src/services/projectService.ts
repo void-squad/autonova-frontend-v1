@@ -3,38 +3,14 @@ import type {
   ProjectSummary,
   ProjectDetails,
   ApproveProjectPayload,
-  CreateTaskPayload,
   ProjectTask,
   TaskStatus,
 } from "@/types/project";
 import type { AdminAppointment } from "@/types/appointment";
 
-const resolveLocalProjectBase = () => {
-  if (typeof window === "undefined") return undefined;
-  const proto = window.location.protocol === "https:" ? "https:" : "http:";
-  const port =
-    import.meta.env.VITE_PROJECT_API_PORT ??
-    import.meta.env.VITE_PROJECT_PORT ??
-    "8082";
-  return `${proto}//${window.location.hostname}:${port}`;
-};
-
-const resolveLocalGatewayBase = () => {
-  if (typeof window === "undefined") return undefined;
-  const proto = window.location.protocol === "https:" ? "https:" : "http:";
-  const port =
-    import.meta.env.VITE_GATEWAY_API_PORT ?? import.meta.env.VITE_GATEWAY_PORT ?? "8080";
-  return `${proto}//${window.location.hostname}:${port}`;
-};
-
-// // Prefer hitting the API through the gateway during local/dev runs. Fall back to direct project
-// // service base URLs if explicitly provided.
-
 const projectApiBaseUrl =
   sanitizeBaseUrl(import.meta.env.VITE_GATEWAY_API_BASE_URL) ??
   sanitizeBaseUrl(import.meta.env.VITE_PROJECT_API_BASE_URL) ??
-  sanitizeBaseUrl(resolveLocalGatewayBase()) ??
-  sanitizeBaseUrl(resolveLocalProjectBase()) ??
   apiConfig.API_BASE_URL;
 
 if (import.meta.env.DEV) {
@@ -62,13 +38,6 @@ export const getAdminProject = async (projectId: string): Promise<ProjectDetails
 
 export const approveProject = async (projectId: string, payload: ApproveProjectPayload): Promise<void> => {
   await projectApi(`/api/admin/projects/${projectId}/approve`, {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
-};
-
-export const createAdminTask = async (projectId: string, payload: CreateTaskPayload): Promise<ProjectTask> => {
-  return projectApi<ProjectTask>(`/api/admin/projects/${projectId}/tasks`, {
     method: "POST",
     body: JSON.stringify(payload),
   });
@@ -116,4 +85,23 @@ export const updateAdminAppointmentStatus = async (id: string, status: string, a
     method: "PATCH",
     body: JSON.stringify({ status, adminNote }),
   });
+};
+
+export const convertAppointmentToProject = async (id: string, projectId?: string): Promise<ProjectDetails> => {
+  return projectApi<ProjectDetails>(`/api/admin/appointments/${id}/convert`, {
+    method: "POST",
+    body: projectId ? JSON.stringify({ projectId }) : undefined,
+  });
+};
+
+export interface EmployeeOption {
+  id: string;
+  userName: string;
+  firstName?: string;
+  lastName?: string;
+  email: string;
+}
+
+export const listActiveEmployees = async (): Promise<EmployeeOption[]> => {
+  return api<EmployeeOption[]>("/api/users?role=EMPLOYEE&status=active");
 };

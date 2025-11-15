@@ -1,4 +1,4 @@
-import { api } from '@/lib/api/client';
+import { api, apiConfig, getAuthToken } from '@/lib/api/client';
 
 export interface EmployeeInfo {
   userId: number;
@@ -51,6 +51,8 @@ export interface EmployeeDashboardResponse {
   activeProjects: ActiveProject[];
 }
 
+const EMPLOYEE_DASHBOARD_ENDPOINT = `${apiConfig.API_BASE_URL}/api/employee-dashboard`;
+
 // Mock data fallback
 const MOCK_DASHBOARD_DATA: EmployeeDashboardResponse = {
   employeeInfo: {
@@ -101,8 +103,16 @@ const MOCK_DASHBOARD_DATA: EmployeeDashboardResponse = {
 
 export async function fetchEmployeeDashboard(): Promise<EmployeeDashboardResponse> {
   try {
-    const response = await api<EmployeeDashboardResponse>('/api/employee-dashboard', {
+    const token = getAuthToken();
+    if (!token) {
+      throw new Error('Missing access token');
+    }
+
+    const response = await api<EmployeeDashboardResponse>(EMPLOYEE_DASHBOARD_ENDPOINT, {
       method: 'GET',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
     });
     
     // If response is empty or null, fallback to mock data

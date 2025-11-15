@@ -1,24 +1,30 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { fetchAssignedTasks, updateTaskStatus } from "@/services/projectService";
-import type { ProjectTask, TaskPriority, TaskStatus } from "@/types/project";
+import { Badge } from "@/components/ui/badge";
+import {
+  fetchEmployeeDashboard,
+  type ActiveProject,
+  type UpcomingTask,
+} from "@/services/employeeDashboardService";
 
-const formatDate = (value?: string) => (value ? new Date(value).toLocaleString() : "—");
+const formatDueDate = (value?: string) => {
+  if (!value || value === "TBD") return "To be scheduled";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString();
+};
 
-const taskStatusValues: TaskStatus[] = ["Requested", "Accepted", "InProgress", "Completed", "Cancelled"];
-const taskPriorityValues: TaskPriority[] = ["urgent", "high", "normal", "low"];
-
-const nextAvailableStatuses: Record<TaskStatus, TaskStatus[]> = {
-  Requested: ["Accepted", "Cancelled"],
-  Accepted: ["InProgress", "Cancelled"],
-  InProgress: ["Completed"],
-  Completed: [],
-  Cancelled: [],
+const priorityBadgeStyles: Record<UpcomingTask["priority"], string> = {
+  URGENT: "bg-red-500 text-white",
+  HIGH: "bg-orange-500 text-white",
+  MEDIUM: "bg-amber-500 text-white",
+  LOW: "bg-muted text-foreground",
 };
 
 export default function EmployeeTasks() {
-  const [tasks, setTasks] = useState<ProjectTask[]>([]);
+  const [tasks, setTasks] = useState<UpcomingTask[]>([]);
+  const [projects, setProjects] = useState<ActiveProject[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -27,19 +33,10 @@ export default function EmployeeTasks() {
       console.log("[DEBUG] Starting to load tasks...");
       setLoading(true);
       setError(null);
-      const data = await fetchAssignedTasks();
-      console.log("[DEBUG] Tasks loaded successfully:", data);
-      const statusCounts = taskStatusValues.reduce<Record<TaskStatus, number>>((acc, status) => {
-        acc[status] = data.filter((t) => t.status === status).length;
-        return acc;
-      }, {} as Record<TaskStatus, number>);
-      const priorityCounts = taskPriorityValues.reduce<Record<TaskPriority, number>>((acc, priority) => {
-        acc[priority] = data.filter((t) => t.priority === priority).length;
-        return acc;
-      }, {} as Record<TaskPriority, number>);
-      console.log("[DEBUG] Tasks by status:", statusCounts);
-      console.log("[DEBUG] Tasks by priority:", priorityCounts);
-      setTasks(data);
+      const data = await fetchEmployeeDashboard();
+      console.log("[DEBUG] Dashboard data loaded successfully:", data);
+      setTasks(data.upcomingTasks ?? []);
+      setProjects(data.activeProjects ?? []);
     } catch (err) {
       console.error("[DEBUG] Error loading tasks:", err);
       setError(err instanceof Error ? err.message : "Failed to load tasks");
@@ -52,15 +49,6 @@ export default function EmployeeTasks() {
   useEffect(() => {
     load();
   }, []);
-
-  const handleUpdate = async (taskId: string, status: TaskStatus) => {
-    try {
-      await updateTaskStatus(taskId, status);
-      await load();
-    } catch (err) {
-      alert(err instanceof Error ? err.message : "Unable to update task");
-    }
-  };
 
   return (
     <div className="space-y-6">
@@ -78,7 +66,7 @@ export default function EmployeeTasks() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Assignments</CardTitle>
+          <CardTitle>Upcoming Tasks</CardTitle>
         </CardHeader>
         <CardContent className="overflow-hidden rounded-md border">
           {loading ? (
@@ -90,41 +78,67 @@ export default function EmployeeTasks() {
               <thead className="bg-muted/50">
                 <tr>
                   <th className="px-4 py-2 text-left">Title</th>
-                  <th className="px-4 py-2 text-left">Service</th>
-                  <th className="px-4 py-2 text-left">Status</th>
-                  <th className="px-4 py-2 text-left">Schedule</th>
+                  <th className="px-4 py-2 text-left">Priority</th>
+                  <th className="px-4 py-2 text-left">Due</th>
                   <th className="px-4 py-2 text-left">Project</th>
-                  <th className="px-4 py-2 text-right">Actions</th>
+                  <th className="px-4 py-2 text-left">Description</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
                 {tasks.map((task) => (
-                  <tr key={task.taskId}>
+                  <tr key={task.id}>
                     <td className="px-4 py-2 font-medium">{task.title}</td>
-                    <td className="px-4 py-2">{task.serviceType}</td>
-                    <td className="px-4 py-2">{task.status}</td>
-                    <td className="px-4 py-2 text-xs text-muted-foreground">
-                      {formatDate(task.scheduledStart)} – {formatDate(task.scheduledEnd)}
+                    <td className="px-4 py-2">
+                      <Badge className={priorityBadgeStyles[task.priority]}>{task.priority}</Badge>
                     </td>
-                    <td className="px-4 py-2 text-xs">{task.projectId}</td>
-                    <td className="px-4 py-2 text-right">
-                      <div className="flex flex-wrap justify-end gap-2">
-                        {nextAvailableStatuses[task.status].map((next) => (
-                          <Button
-                            key={next}
-                            size="sm"
-                            variant={next === "Cancelled" ? "destructive" : "outline"}
-                            onClick={() => handleUpdate(task.taskId, next)}
-                          >
-                            {next}
-                          </Button>
-                        ))}
-                      </div>
+                    <td className="px-4 py-2 text-xs text-muted-foreground">
+                      {formatDueDate(task.dueDate)}
+                    </td>
+                    <td className="px-4 py-2 text-xs">{task.projectId ?? "—"}</td>
+                    <td className="px-4 py-2 text-xs text-muted-foreground max-w-xs">
+                      {task.description || "No description provided"}
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Active Projects</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {loading ? (
+            <p className="text-sm text-muted-foreground">Loading projects…</p>
+          ) : projects.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No active projects.</p>
+          ) : (
+            projects.map((project) => (
+              <div key={project.projectId} className="border rounded-lg p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">{project.projectName}</p>
+                    <p className="text-xs text-muted-foreground">Customer: {project.customerName}</p>
+                  </div>
+                  <Badge variant={project.status === "InProgress" ? "default" : "outline"}>
+                    {project.status}
+                  </Badge>
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">
+                  {project.startDate ? `Start: ${new Date(project.startDate).toLocaleDateString()}` : ""}
+                  {project.expectedCompletionDate ? ` • Due: ${new Date(project.expectedCompletionDate).toLocaleDateString()}` : ""}
+                </p>
+                <div className="mt-2 h-2 w-full rounded-full bg-muted">
+                  <div
+                    className="h-2 rounded-full bg-primary"
+                    style={{ width: `${project.progressPercentage}%` }}
+                  />
+                </div>
+              </div>
+            ))
           )}
         </CardContent>
       </Card>
