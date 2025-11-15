@@ -27,172 +27,60 @@ import {
   type EmployeeDashboardResponse 
 } from '@/services/employeeDashboardService';
 
-// Mock data
-const MOCK_STATS: EmployeeStats = {
-  assignedServices: 8,
-  assignedProjects: 3,
-  inProgressServices: 4,
-  inProgressProjects: 2,
-  completedToday: 2,
-  urgentTasks: 3,
-  overdueTasks: 1,
-  totalHoursThisWeek: 32.5,
+const normalizePriority = (value?: string | null): TaskPriority => {
+  const key = value?.toLowerCase();
+  if (key === 'urgent') return 'urgent';
+  if (key === 'high' || key === 'critical') return 'high';
+  if (key === 'low') return 'low';
+  return 'normal';
 };
 
-const MOCK_TIME_LOG_STATS: TimeLogStats = {
-  totalHoursThisWeek: 32.5,
-  totalHoursThisMonth: 128.0,
-  totalHoursToday: 6.5,
-  averageHoursPerDay: 6.5,
-  totalLogs: 45,
-  dailyHours: [
-    { date: '2025-11-01', hours: 8.0, logCount: 3 },
-    { date: '2025-11-02', hours: 7.5, logCount: 4 },
-    { date: '2025-11-03', hours: 6.0, logCount: 2 },
-    { date: '2025-11-04', hours: 8.5, logCount: 5 },
-    { date: '2025-11-05', hours: 6.5, logCount: 3 },
-  ],
-  recentLogs: [],
-  mostProductiveDay: { date: '2025-11-04', hours: 8.5 },
+const deriveStats = (data: EmployeeDashboardResponse): EmployeeStats => {
+  const urgentTasks = data.upcomingTasks.filter(
+    (task) => normalizePriority(task.priority) === 'urgent'
+  ).length;
+  const overdueTasks = data.upcomingTasks.filter((task) => {
+    if (!task.dueDate) return false;
+    return new Date(task.dueDate) < new Date();
+  }).length;
+  const inProgressProjects = data.activeProjects.filter(
+    (project) => project.status === 'InProgress'
+  ).length;
+
+  return {
+    assignedServices: 0,
+    assignedProjects: data.activeProjects.length,
+    inProgressServices: 0,
+    inProgressProjects,
+    completedToday: data.stats.completedTasksThisWeek,
+    urgentTasks,
+    overdueTasks,
+    totalHoursThisWeek: 0,
+  };
 };
 
-const MOCK_WORK_ITEMS: EmployeeWorkItem[] = [
-  {
-    id: '1',
-    type: 'service',
-    title: 'Oil Change & Filter Replacement',
-    description: 'Complete oil change service with new filter',
-    vehicle: 'Toyota Camry 2022',
-    customer: 'John Smith',
-    priority: 'urgent',
-    status: 'assigned',
-    dueDate: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(), // Due in 2 hours
-    estimatedTime: '1.5 hours',
-  },
-  {
-    id: '2',
-    type: 'service',
-    title: 'Brake Pad Replacement',
-    description: 'Replace front brake pads and inspect rotors',
-    vehicle: 'Honda Accord 2021',
-    customer: 'Sarah Johnson',
-    priority: 'high',
-    status: 'in_progress',
-    dueDate: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // Due tomorrow
-    estimatedTime: '2 hours',
-  },
-  {
-    id: '3',
-    type: 'project',
-    title: 'Custom Exhaust System Installation',
-    description: 'Install performance exhaust system with custom tips',
-    vehicle: 'BMW M3 2023',
-    customer: 'Mike Wilson',
-    priority: 'normal',
-    status: 'in_progress',
-    progress: 45,
-    dueDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(), // Due in 5 days
-    estimatedTime: '8 hours',
-  },
-  {
-    id: '4',
-    type: 'service',
-    title: 'Transmission Fluid Service',
-    description: 'Complete transmission fluid change and filter',
-    vehicle: 'Ford F-150 2020',
-    customer: 'David Brown',
-    priority: 'urgent',
-    status: 'assigned',
-    dueDate: new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString(), // Due in 4 hours
-    estimatedTime: '2.5 hours',
-  },
-  {
-    id: '5',
-    type: 'project',
-    title: 'Full Interior Customization',
-    description: 'Custom leather seats and dashboard wrap',
-    vehicle: 'Mercedes-Benz C-Class 2023',
-    customer: 'Emily Davis',
-    priority: 'high',
-    status: 'in_progress',
-    progress: 60,
-    dueDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(), // Due in 3 days
-    estimatedTime: '16 hours',
-  },
-  {
-    id: '6',
-    type: 'service',
-    title: 'Wheel Alignment & Balancing',
-    description: '4-wheel alignment and tire balancing service',
-    vehicle: 'Tesla Model 3 2022',
-    customer: 'Robert Miller',
-    priority: 'normal',
-    status: 'assigned',
-    dueDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(), // Due in 2 days
-    estimatedTime: '1 hour',
-  },
-  {
-    id: '7',
-    type: 'service',
-    title: 'AC System Repair',
-    description: 'Diagnose and repair AC cooling issue',
-    vehicle: 'Nissan Altima 2021',
-    customer: 'Jessica Taylor',
-    priority: 'urgent',
-    status: 'overdue',
-    dueDate: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), // Overdue by 1 day
-    estimatedTime: '3 hours',
-  },
-  {
-    id: '8',
-    type: 'project',
-    title: 'Performance Tuning Package',
-    description: 'ECU tuning and performance upgrades',
-    vehicle: 'Audi RS5 2023',
-    customer: 'Chris Anderson',
-    priority: 'high',
-    status: 'assigned',
-    progress: 0,
-    dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // Due in 7 days
-    estimatedTime: '12 hours',
-  },
-  {
-    id: '9',
-    type: 'service',
-    title: 'Battery Replacement',
-    description: 'Replace dead battery and test charging system',
-    vehicle: 'Chevrolet Silverado 2019',
-    customer: 'Amanda White',
-    priority: 'normal',
-    status: 'completed',
-    dueDate: new Date(Date.now()).toISOString(), // Due today
-    estimatedTime: '0.5 hours',
-  },
-  {
-    id: '10',
-    type: 'service',
-    title: 'Engine Diagnostic Scan',
-    description: 'Full diagnostic scan for check engine light',
-    vehicle: 'Mazda CX-5 2022',
-    customer: 'Kevin Martinez',
-    priority: 'high',
-    status: 'assigned',
-    dueDate: new Date(Date.now() + 6 * 60 * 60 * 1000).toISOString(), // Due in 6 hours
-    estimatedTime: '1 hour',
-  },
-  {
-    id: '11',
-    type: 'service',
-    title: 'Coolant System Flush',
-    description: 'Complete coolant system flush and refill',
-    vehicle: 'Volkswagen Passat 2020',
-    customer: 'Lisa Garcia',
-    priority: 'low',
-    status: 'planned',
-    dueDate: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString(), // Due in 10 days
-    estimatedTime: '1.5 hours',
-  },
-];
+const deriveWorkItems = (data: EmployeeDashboardResponse): EmployeeWorkItem[] => {
+  const projectLookup = new Map(
+    data.activeProjects.map((project) => [project.projectId, project])
+  );
+
+  return data.upcomingTasks.map((task) => {
+    const project = task.projectId ? projectLookup.get(task.projectId) : undefined;
+
+    return {
+      id: task.id,
+      type: project ? 'project' : 'service',
+      title: task.title,
+      description: task.description ?? '',
+      customer: project?.customerName ?? '',
+      vehicle: project?.projectName ?? '',
+      priority: normalizePriority(task.priority),
+      status: 'assigned',
+      dueDate: task.dueDate && task.dueDate !== 'TBD' ? task.dueDate : undefined,
+      progress: project?.progressPercentage,
+    };
+  });
+};
 
 export default function EmployeeDashboard() {
   const { user } = useAuth();
@@ -204,63 +92,38 @@ export default function EmployeeDashboard() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('all');
   const [dashboardData, setDashboardData] = useState<EmployeeDashboardResponse | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const loadDashboardData = async () => {
     try {
       setLoading(true);
-      
-      // Fetch data from API (with mock data fallback)
+      setError(null);
+
       const data = await fetchEmployeeDashboard();
       setDashboardData(data);
 
-      // Map API response to existing stats format
-      const mappedStats: EmployeeStats = {
-        assignedServices: 0, // Not directly provided by API
-        assignedProjects: data.stats.totalActiveProjects,
-        inProgressServices: 0, // Not directly provided by API
-        inProgressProjects: data.stats.totalActiveProjects,
-        completedToday: data.stats.completedTasksThisWeek,
-        urgentTasks: data.upcomingTasks.filter(t => t.priority === 'URGENT').length,
-        overdueTasks: 0, // Calculate from tasks if needed
-        totalHoursThisWeek: 0, // Not provided by API
-      };
-      
+      const mappedStats = deriveStats(data);
+      const mappedWorkItems = deriveWorkItems(data);
+      const now = new Date();
+
       setStats(mappedStats);
-
-      // Map upcoming tasks to work items format
-      const mappedWorkItems: EmployeeWorkItem[] = data.upcomingTasks.map(task => ({
-        id: task.id,
-        type: 'project',
-        title: task.title,
-        description: task.description,
-        vehicle: '', // Not provided by API
-        customer: '', // Not provided by API
-        priority: task.priority.toLowerCase() as TaskPriority,
-        status: 'assigned',
-        dueDate: task.dueDate === 'TBD' ? undefined : task.dueDate,
-        estimatedTime: '', // Not provided by API
-        progress: data.activeProjects.find(p => p.projectId === task.projectId)?.progressPercentage,
-      }));
-      
-      setWorkItems([...MOCK_WORK_ITEMS, ...mappedWorkItems]);
-      
-      // Filter urgent and overdue tasks
-      const urgent = [...MOCK_WORK_ITEMS, ...mappedWorkItems].filter(item => item.priority === 'urgent');
-      const overdue = MOCK_WORK_ITEMS.filter(item => item.status === 'overdue');
-      
-      setUrgentTasks(urgent);
-      setOverdueTasks(overdue);
-
-      // Set time log stats (use mock data as API doesn't provide this)
-      setTimeLogStats(MOCK_TIME_LOG_STATS);
-    } catch (error) {
-      console.error('Failed to load dashboard data:', error);
-      // Fallback to mock data on error
-      setStats(MOCK_STATS);
-      setTimeLogStats(MOCK_TIME_LOG_STATS);
-      setWorkItems(MOCK_WORK_ITEMS);
-      setUrgentTasks(MOCK_WORK_ITEMS.filter(item => item.priority === 'urgent'));
-      setOverdueTasks(MOCK_WORK_ITEMS.filter(item => item.status === 'overdue'));
+      setWorkItems(mappedWorkItems);
+      setUrgentTasks(mappedWorkItems.filter((item) => item.priority === 'urgent'));
+      setOverdueTasks(
+        mappedWorkItems.filter(
+          (item) => item.dueDate && new Date(item.dueDate) < now
+        )
+      );
+      setTimeLogStats(null);
+    } catch (err) {
+      console.error('Failed to load dashboard data:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load dashboard data');
+      setDashboardData(null);
+      setStats(null);
+      setTimeLogStats(null);
+      setWorkItems([]);
+      setUrgentTasks([]);
+      setOverdueTasks([]);
     } finally {
       setLoading(false);
     }
@@ -412,6 +275,14 @@ export default function EmployeeDashboard() {
         </div>
       </div>
 
+        {error && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Unable to load dashboard data</AlertTitle>
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
       {/* Alerts for Overdue Tasks */}
       {overdueTasks.length > 0 && (
         <Alert variant="destructive">
@@ -480,7 +351,9 @@ export default function EmployeeDashboard() {
             <CardContent>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">
-                  {timeLogStats?.totalHoursThisWeek || 0} hrs this week
+                  {timeLogStats
+                    ? `${timeLogStats.totalHoursThisWeek} hrs this week`
+                    : 'Insights coming soon'}
                 </span>
                 <ArrowRight className="h-4 w-4" />
               </div>
@@ -771,20 +644,22 @@ function WorkItemCard({ item }: { item: EmployeeWorkItem }) {
           )}
         </div>
 
-        <div className="flex items-center gap-4 text-sm text-muted-foreground">
-          <span>{item.vehicle}</span>
-          <span>•</span>
-          <span>{item.customer}</span>
-          {item.estimatedTime && (
-            <>
-              <span>•</span>
+        {item.vehicle || item.customer || item.estimatedTime ? (
+          <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+            {item.vehicle && <span>{item.vehicle}</span>}
+            {item.vehicle && item.customer && <span>•</span>}
+            {item.customer && <span>{item.customer}</span>}
+            {(item.vehicle || item.customer) && item.estimatedTime && <span>•</span>}
+            {item.estimatedTime && (
               <span className="flex items-center gap-1">
                 <Clock className="h-3 w-3" />
                 {item.estimatedTime}
               </span>
-            </>
-          )}
-        </div>
+            )}
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">No customer or vehicle info yet</p>
+        )}
 
         {item.progress !== undefined && item.type === 'project' && (
           <div className="space-y-1">

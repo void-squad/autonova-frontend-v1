@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   fetchEmployeeDashboard,
@@ -15,11 +14,19 @@ const formatDueDate = (value?: string) => {
   return date.toLocaleString();
 };
 
-const priorityBadgeStyles: Record<UpcomingTask["priority"], string> = {
+const priorityBadgeStyles: Record<string, string> = {
   URGENT: "bg-red-500 text-white",
   HIGH: "bg-orange-500 text-white",
   MEDIUM: "bg-amber-500 text-white",
   LOW: "bg-muted text-foreground",
+  Accepted: "bg-emerald-500 text-white",
+  Pending: "bg-yellow-500 text-black",
+  InProgress: "bg-blue-500 text-white",
+};
+
+const getPriorityBadgeClass = (priority?: string | null) => {
+  if (!priority) return "bg-muted text-foreground";
+  return priorityBadgeStyles[priority] ?? "bg-muted text-foreground";
 };
 
 export default function EmployeeTasks() {
@@ -52,14 +59,9 @@ export default function EmployeeTasks() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">My Tasks</h1>
-          <p className="text-muted-foreground">Work assigned to you across all projects.</p>
-        </div>
-        <Button variant="outline" onClick={load} disabled={loading}>
-          Refresh
-        </Button>
+      <div>
+        <h1 className="text-3xl font-bold">My Tasks</h1>
+        <p className="text-muted-foreground">Work assigned to you across all projects.</p>
       </div>
 
       {error && <p className="text-destructive text-sm">{error}</p>}
@@ -89,14 +91,16 @@ export default function EmployeeTasks() {
                   <tr key={task.id}>
                     <td className="px-4 py-2 font-medium">{task.title}</td>
                     <td className="px-4 py-2">
-                      <Badge className={priorityBadgeStyles[task.priority]}>{task.priority}</Badge>
+                      <Badge className={getPriorityBadgeClass(task.priority)}>
+                        {task.priority ?? "Unassigned"}
+                      </Badge>
                     </td>
                     <td className="px-4 py-2 text-xs text-muted-foreground">
                       {formatDueDate(task.dueDate)}
                     </td>
                     <td className="px-4 py-2 text-xs">{task.projectId ?? "—"}</td>
                     <td className="px-4 py-2 text-xs text-muted-foreground max-w-xs">
-                      {task.description || "No description provided"}
+                      {task.description?.trim() || "No description provided"}
                     </td>
                   </tr>
                 ))}
