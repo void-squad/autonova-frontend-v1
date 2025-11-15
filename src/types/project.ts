@@ -1,43 +1,82 @@
-export type ProjectStatus = "pending" | "approved" | "in_progress" | "completed" | "cancelled";
+export type ProjectStatus =
+  | "PendingReview"
+  | "Approved"
+  | "InProgress"
+  | "Completed"
+  | "Cancelled";
 
-export interface Project {
-  id: string;
-  code: string;
-  customerName: string;
+export type TaskStatus =
+  | "Requested"
+  | "Accepted"
+  | "InProgress"
+  | "Completed"
+  | "Cancelled";
+
+export type TaskPriority = "urgent" | "high" | "normal" | "low";
+
+export interface ProjectSummary {
+  projectId: string;
+  vehicleId: string;
   title: string;
   status: ProjectStatus;
-  priority?: "low" | "medium" | "high";
-  description?: string;
   createdAt: string;
   updatedAt: string;
-  assigneeIds: string[];
-  startDate?: string;
-  endDate?: string;
+  requestedStart?: string;
+  requestedEnd?: string;
+  approvedStart?: string;
+  approvedEnd?: string;
 }
 
-export interface Task {
-  id: string;
-  projectId: string;
-  name: string;
-  hours: number;
-  rate: number;
-}
-
-export type QuoteStatus = "draft" | "approved";
-
-export interface Quote {
-  id: string;
-  projectId: string;
-  subtotal: number;
-  tax: number;
-  total: number;
-  status: QuoteStatus;
+export interface ProjectTask {
+  taskId: string;
+  title: string;
+  serviceType: string;
+  detail?: string;
+  status: TaskStatus;
+  assigneeId?: string;
+  estimateHours?: number;
+  scheduledStart?: string;
+  scheduledEnd?: string;
+  appointmentId?: string;
+  createdAt: string;
+  updatedAt: string;
+  priority?: TaskPriority;
+  projectId?: string;
 }
 
 export interface ProjectActivity {
-  id: string;
-  projectId: string;
-  type: string;
+  id: number;
+  taskId?: string;
+  actorId: string;
+  actorRole: string;
   message: string;
-  at: string;
+  createdAt: string;
+}
+
+export interface ProjectDetails extends ProjectSummary {
+  customerId: string;
+  description?: string;
+  appointmentId?: string;
+  appointmentSnapshot?: string;
+  tasks: ProjectTask[];
+  activity: ProjectActivity[];
+}
+
+export interface ApproveProjectPayload {
+  approvedStart?: string;
+  approvedEnd?: string;
+  tasks: Array<{
+    taskId: string;
+    assigneeId?: string;
+    scheduledStart?: string;
+    scheduledEnd?: string;
+  }>;
+}
+
+export interface CreateTaskPayload {
+  title: string;
+  serviceType: string;
+  detail?: string;
+  scheduledStart?: string;
+  scheduledEnd?: string;
 }

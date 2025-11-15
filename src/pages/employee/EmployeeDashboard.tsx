@@ -4,7 +4,7 @@ import {
   Clock, 
   CheckCircle, 
   AlertTriangle, 
-  FolderKanban, 
+  FolderKanban,
   PlayCircle, 
   Timer, 
   CalendarClock,
@@ -409,12 +409,6 @@ export default function EmployeeDashboard() {
               Log Time
             </Link>
           </Button>
-          <Button size="sm" asChild>
-            <Link to="/employee/projects">
-              <FolderKanban className="mr-2 h-4 w-4" />
-              View Projects
-            </Link>
-          </Button>
         </div>
       </div>
 
@@ -449,7 +443,7 @@ export default function EmployeeDashboard() {
       </div>
 
       {/* Quick Actions */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2">
         <Link to="/employee/services" className="block">
           <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -465,28 +459,6 @@ export default function EmployeeDashboard() {
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">
                   {stats?.assignedServices || 0} assigned
-                </span>
-                <ArrowRight className="h-4 w-4" />
-              </div>
-            </CardContent>
-          </Card>
-        </Link>
-
-        <Link to="/employee/projects" className="block">
-          <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <div>
-                <CardTitle className="text-base">Modification Projects</CardTitle>
-                <CardDescription className="text-xs mt-1">
-                  Manage your projects
-                </CardDescription>
-              </div>
-              <FolderKanban className="h-5 w-5 text-purple-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">
-                  {stats?.assignedProjects || 0} assigned
                 </span>
                 <ArrowRight className="h-4 w-4" />
               </div>
@@ -560,8 +532,8 @@ export default function EmployeeDashboard() {
                 <CardDescription>Your currently active modification projects</CardDescription>
               </div>
               <Button variant="outline" size="sm" asChild>
-                <Link to="/employee/projects">
-                  View All
+                <Link to="/employee/tasks">
+                  Review Tasks
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
               </Button>
@@ -645,9 +617,9 @@ export default function EmployeeDashboard() {
                     )}
                   </div>
                   <Button size="sm" variant="default" asChild>
-                    <Link to={`/employee/${task.type === 'service' ? 'services' : 'projects'}/${task.id}`}>
+                    <Link to="/employee/tasks">
                       <PlayCircle className="mr-2 h-4 w-4" />
-                      Start
+                      Open Tasks
                     </Link>
                   </Button>
                 </div>
@@ -834,9 +806,7 @@ function WorkItemCard({ item }: { item: EmployeeWorkItem }) {
 
       <div className="flex items-center gap-2 ml-4">
         <Button size="sm" variant="outline" asChild>
-          <Link to={`/employee/${item.type === 'service' ? 'services' : 'projects'}/${item.id}`}>
-            View Details
-          </Link>
+          <Link to="/employee/tasks">Open Tasks</Link>
         </Button>
       </div>
     </div>

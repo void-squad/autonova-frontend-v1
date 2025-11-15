@@ -9,7 +9,6 @@ import DashboardLayout from "./components/layout/DashboardLayout";
 import CustomerSidebar from "./components/layout/CustomerSidebar";
 import EmployeeSidebar from "./components/layout/EmployeeSidebar";
 import AdminSidebar from "./components/layout/AdminSidebar";
-import { ProjectsStoreProvider } from "./contexts/ProjectsStore";
 import Help from "./pages/Help";
 
 // Public pages
@@ -38,7 +37,6 @@ import Profile from "./pages/Profile";
 // Employee pages
 import EmployeeDashboard from "./pages/employee/EmployeeDashboard";
 import EmployeeServices from "./pages/employee/services";
-import EmployeeProjects from "./pages/employee/projects";
 import EmployeeTasks from "./pages/employee/tasks";
 import EmployeeReports from "./pages/employee/reports";
 import TimeLoggingPage from "./pages/employee/TimeLoggingPage";
@@ -52,7 +50,7 @@ import EmployeeDetail from "./pages/admin/employee-detail";
 import Notifications from "./pages/Notifications";
 import { TimeLoggingPage as AdminTimeLoggingPage } from "./pages/admin/TimeLoggingPage";
 import AdminBilling from "./pages/admin/AdminBilling";
-import { getAdminProjectRoutes } from "./pages/admin/projects";
+import { getAdminProjectRoutes } from "./pages/admin/adminProjectsRoutes";
 import ManageAppointments from "./pages/admin/ManageAppointments";
 
 const getSidebarForRole = (role?: string | null) => {
@@ -107,14 +105,13 @@ const NotificationsRoute = () => {
 import UserManagement from "./pages/admin/UserManagement";
 
 const queryClient = new QueryClient();
+const adminProjectRoutes = getAdminProjectRoutes();
 
 const App = () => {
-  const adminProjectRoutes = getAdminProjectRoutes();
 
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <ProjectsStoreProvider>
           <ChatbotStatusProvider>
             <TooltipProvider>
             <Toaster />
@@ -193,8 +190,6 @@ const App = () => {
                   <Route path="time-logging" element={<TimeLoggingPage />} />
                   <Route path="tasks" element={<EmployeeTasks />} />
                   <Route path="services" element={<EmployeeServices />} />
-                  <Route path="projects" element={<EmployeeProjects />} />
-                  <Route path="projects/:projectId/progress" element={<EmployeeProjectProgress />} />
                   <Route path="reports" element={<EmployeeReports />} />
                   <Route path="billing" element={<EmployeeBilling />} />
                 </Route>
@@ -233,7 +228,6 @@ const App = () => {
             </BrowserRouter>
           </TooltipProvider>
         </ChatbotStatusProvider>
-      </ProjectsStoreProvider>
       </AuthProvider>
     </QueryClientProvider>
   );

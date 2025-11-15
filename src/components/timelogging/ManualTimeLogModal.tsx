@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,6 +21,8 @@ interface ManualTimeLogModalProps {
   onProjectChange: (projectId: string) => void;
   onSubmit: (data: TimeLogFormData) => void;
   isLoading?: boolean;
+  initialData?: TimeLogFormData;
+  submitLabel?: string;
 }
 
 export const ManualTimeLogModal = ({
@@ -30,6 +32,8 @@ export const ManualTimeLogModal = ({
   onProjectChange,
   onSubmit,
   isLoading = false,
+  initialData,
+  submitLabel = "Log Time",
 }: ManualTimeLogModalProps) => {
   const [formData, setFormData] = useState<TimeLogFormData>({
     projectId: selectedProjectId || "",
@@ -48,6 +52,13 @@ export const ManualTimeLogModal = ({
     if (formData.hours <= 0) newErrors.hours = "Hours must be greater than 0";
     if (formData.hours > 24) newErrors.hours = "Hours cannot exceed 24";
 
+    // Allow decimals up to 2 decimal places (e.g., 1.25). Reject inputs like 1.234
+    // Convert to string to validate decimal places reliably.
+    const hoursStr = String(formData.hours);
+    if (formData.hours !== 0 && !/^[0-9]+(\.[0-9]{1,2})?$/.test(hoursStr)) {
+      newErrors.hours = "Hours may have up to two decimal places";
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -56,15 +67,43 @@ export const ManualTimeLogModal = ({
     e.preventDefault();
     if (validate()) {
       onSubmit(formData);
-      // Reset form
-      setFormData({
-        projectId: selectedProjectId || "",
-        taskId: "",
-        hours: 0,
-        note: "",
-      });
+      // If initialData provided (edit mode), keep values; otherwise reset
+      if (!initialData) {
+        setFormData({
+          projectId: selectedProjectId || "",
+          taskId: "",
+          hours: 0,
+          note: "",
+        });
+      }
     }
   };
+
+  // Initialize form if initialData is provided (edit mode).
+
+  // UseRef to only initialize once per modal open to avoid
+  // overwriting user edits when parent re-renders and passes a new
+  // initialData object reference.
+  const initializedRef = useRef(false);
+  useEffect(() => {
+    if (initialData && !initializedRef.current) {
+      setFormData({
+        projectId: initialData.projectId,
+        taskId: initialData.taskId,
+        hours: initialData.hours,
+        note: initialData.note || "",
+      });
+      // trigger fetching tasks for this project in parent via onProjectChange
+      onProjectChange(initialData.projectId);
+      initializedRef.current = true;
+    }
+
+    // Reset initialized flag when initialData becomes undefined (modal closed)
+    if (!initialData) {
+      initializedRef.current = false;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialData]);
 
   return (
     <Card className="p-6">
@@ -134,14 +173,16 @@ export const ManualTimeLogModal = ({
           <Input
             id="hours"
             type="number"
-            step="0.5"
+            step="0.01" /* allow any decimal up to 2 decimal places */
             min="0"
             max="24"
-            value={formData.hours || ""}
+            value={formData.hours === 0 ? "" : String(formData.hours)}
             onChange={(e) => {
+              const val = e.target.value;
+              const parsed = val === "" ? 0 : parseFloat(val);
               setFormData({
                 ...formData,
-                hours: parseFloat(e.target.value) || 0,
+                hours: isNaN(parsed) ? 0 : parsed,
               });
               setErrors({ ...errors, hours: "" });
             }}
@@ -167,7 +208,7 @@ export const ManualTimeLogModal = ({
 
         {/* Submit Button */}
         <Button type="submit" className="w-full" disabled={isLoading}>
-          {isLoading ? "Logging Time..." : "Log Time"}
+          {isLoading ? `${submitLabel}...` : submitLabel}
         </Button>
       </form>
     </Card>

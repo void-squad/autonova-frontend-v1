@@ -23,15 +23,18 @@ export const TimeLogHistory = ({
   onEdit,
   onDelete,
 }: TimeLogHistoryProps) => {
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
+  const formatDateOnly = (dateString: string) =>
+    new Date(dateString).toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",
       year: "numeric",
+    });
+
+  const formatTimeOnly = (dateString: string) =>
+    new Date(dateString).toLocaleTimeString("en-US", {
       hour: "2-digit",
       minute: "2-digit",
     });
-  };
 
   const totalHours = timeLogs.reduce((sum, log) => sum + log.hours, 0);
 
@@ -83,28 +86,39 @@ export const TimeLogHistory = ({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead>Project</TableHead>
-                <TableHead>Task</TableHead>
+                <TableHead className="w-48">Date</TableHead>
+                <TableHead className="min-w-[240px]">Project</TableHead>
+                <TableHead className="min-w-[180px]">Task</TableHead>
                 <TableHead className="text-right">Hours</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Notes</TableHead>
+                <TableHead className="min-w-[320px]">Notes</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {timeLogs.map((log) => (
                 <TableRow key={log.id}>
-                  <TableCell className="font-medium">
-                    {formatDate(log.loggedAt)}
+                  <TableCell className="font-medium w-48">
+                    <div className="flex flex-col">
+                      <span className="whitespace-nowrap">
+                        {formatDateOnly(log.loggedAt)}
+                      </span>
+                      <span className="text-sm text-gray-500">
+                        {formatTimeOnly(log.loggedAt)}
+                      </span>
+                    </div>
                   </TableCell>
-                  <TableCell>{log.projectTitle}</TableCell>
-                  <TableCell>{log.taskName}</TableCell>
+                  <TableCell className="min-w-[240px]">
+                    {log.projectTitle}
+                  </TableCell>
+                  <TableCell className="min-w-[180px]">
+                    {log.taskName}
+                  </TableCell>
                   <TableCell className="text-right font-semibold">
                     {log.hours.toFixed(2)}
                   </TableCell>
                   <TableCell>{getStatusBadge(log.approvalStatus)}</TableCell>
-                  <TableCell className="max-w-xs truncate">
+                  <TableCell className="min-w-[320px] whitespace-normal break-words text-sm">
                     {log.note || "-"}
                   </TableCell>
                   <TableCell className="text-right">

@@ -40,11 +40,20 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TimeLog } from "@/types/timeLogging";
 import { timeLoggingApi } from "@/Api/timeLoggingApi";
-import { Check, X, Clock, Filter, ChevronsUpDown } from "lucide-react";
+import {
+  Check,
+  X,
+  Clock,
+  Filter,
+  ChevronsUpDown,
+  BarChart3,
+} from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { TimeLogAnalytics } from "@/components/admin/TimeLogAnalytics";
 
 export const TimeLoggingPage = () => {
   const [timeLogs, setTimeLogs] = useState<TimeLog[]>([]);
@@ -187,15 +196,18 @@ export const TimeLoggingPage = () => {
     }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
+  const formatDateOnly = (dateString: string) =>
+    new Date(dateString).toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",
       year: "numeric",
+    });
+
+  const formatTimeOnly = (dateString: string) =>
+    new Date(dateString).toLocaleTimeString("en-US", {
       hour: "2-digit",
       minute: "2-digit",
     });
-  };
 
   const getStatusBadge = (status: "PENDING" | "APPROVED" | "REJECTED") => {
     switch (status) {
@@ -254,223 +266,256 @@ export const TimeLoggingPage = () => {
         </div>
       </div>
 
-      {/* Filters */}
-      <Card className="p-6">
-        <div className="flex items-center gap-4 mb-4">
-          <Filter className="w-5 h-5 text-gray-500" />
-          <h2 className="text-lg font-semibold">Filters</h2>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label>Status</Label>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">All</SelectItem>
-                <SelectItem value="PENDING">Pending</SelectItem>
-                <SelectItem value="APPROVED">Approved</SelectItem>
-                <SelectItem value="REJECTED">Rejected</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label>Search by Employee, Project, or Task</Label>
-            <Popover open={searchOpen} onOpenChange={setSearchOpen}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  role="combobox"
-                  aria-expanded={searchOpen}
-                  className="w-full justify-between"
-                >
-                  {searchTerm || "Type to search..."}
-                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-[400px] p-0">
-                <Command>
-                  <CommandInput
-                    placeholder="Search employee, project, or task..."
-                    value={searchTerm}
-                    onValueChange={setSearchTerm}
-                  />
-                  <CommandList>
-                    <CommandEmpty>No results found.</CommandEmpty>
-                    {searchOptions.employees.length > 0 && (
-                      <CommandGroup heading="Employees">
-                        {searchOptions.employees.map((employee) => (
-                          <CommandItem
-                            key={employee}
-                            value={employee}
-                            onSelect={(value) => {
-                              setSearchTerm(value);
-                              setSearchOpen(false);
-                            }}
-                          >
-                            <Check
-                              className={cn(
-                                "mr-2 h-4 w-4",
-                                searchTerm === employee
-                                  ? "opacity-100"
-                                  : "opacity-0"
-                              )}
-                            />
-                            {employee}
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    )}
-                    {searchOptions.projects.length > 0 && (
-                      <CommandGroup heading="Projects">
-                        {searchOptions.projects.map((project) => (
-                          <CommandItem
-                            key={project}
-                            value={project}
-                            onSelect={(value) => {
-                              setSearchTerm(value);
-                              setSearchOpen(false);
-                            }}
-                          >
-                            <Check
-                              className={cn(
-                                "mr-2 h-4 w-4",
-                                searchTerm === project
-                                  ? "opacity-100"
-                                  : "opacity-0"
-                              )}
-                            />
-                            {project}
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    )}
-                    {searchOptions.tasks.length > 0 && (
-                      <CommandGroup heading="Tasks">
-                        {searchOptions.tasks.map((task) => (
-                          <CommandItem
-                            key={task}
-                            value={task}
-                            onSelect={(value) => {
-                              setSearchTerm(value);
-                              setSearchOpen(false);
-                            }}
-                          >
-                            <Check
-                              className={cn(
-                                "mr-2 h-4 w-4",
-                                searchTerm === task
-                                  ? "opacity-100"
-                                  : "opacity-0"
-                              )}
-                            />
-                            {task}
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    )}
-                  </CommandList>
-                </Command>
-              </PopoverContent>
-            </Popover>
-            {searchTerm && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setSearchTerm("")}
-                className="h-8 px-2 lg:px-3"
-              >
-                Clear search
-                <X className="ml-2 h-4 w-4" />
-              </Button>
-            )}
-          </div>
-        </div>
-      </Card>
+      {/* Tabs */}
+      <Tabs defaultValue="logs" className="w-full">
+        <TabsList className="grid w-full max-w-md grid-cols-2">
+          <TabsTrigger value="logs" className="flex items-center gap-2">
+            <Clock className="h-4 w-4" />
+            Time Logs
+          </TabsTrigger>
+          <TabsTrigger value="analytics" className="flex items-center gap-2">
+            <BarChart3 className="h-4 w-4" />
+            Analytics
+          </TabsTrigger>
+        </TabsList>
 
-      {/* Time Logs Table */}
-      <Card className="p-6">
-        <div className="flex items-center gap-2 mb-6">
-          <Clock className="w-5 h-5 text-blue-600" />
-          <h2 className="text-xl font-semibold text-gray-900">Time Logs</h2>
-          <Badge className="ml-2">{filteredLogs.length} entries</Badge>
-        </div>
-
-        {loading ? (
-          <div className="text-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="text-gray-500 mt-4">Loading time logs...</p>
-          </div>
-        ) : filteredLogs.length === 0 ? (
-          <div className="text-center py-12 text-gray-500">
-            <Clock className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-            <p>No time logs found</p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Employee</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Project</TableHead>
-                  <TableHead>Task</TableHead>
-                  <TableHead className="text-right">Hours</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Notes</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredLogs.map((log) => (
-                  <TableRow key={log.id}>
-                    <TableCell className="font-medium">
-                      {log.employeeName || "Unknown"}
-                    </TableCell>
-                    <TableCell>{formatDate(log.loggedAt)}</TableCell>
-                    <TableCell>{log.projectTitle}</TableCell>
-                    <TableCell>{log.taskName}</TableCell>
-                    <TableCell className="text-right font-semibold">
-                      {log.hours.toFixed(2)}
-                    </TableCell>
-                    <TableCell>{getStatusBadge(log.approvalStatus)}</TableCell>
-                    <TableCell className="max-w-xs truncate">
-                      {log.note || "-"}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        {log.approvalStatus === "PENDING" && (
-                          <>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleApprove(log.id)}
-                              className="text-green-600 hover:text-green-700 hover:bg-green-50"
-                            >
-                              <Check className="w-4 h-4 mr-1" />
-                              Approve
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => openRejectDialog(log)}
-                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                            >
-                              <X className="w-4 h-4 mr-1" />
-                              Reject
-                            </Button>
-                          </>
+        <TabsContent value="logs" className="space-y-6">
+          {/* Filters */}
+          <Card className="p-6">
+            <div className="flex items-center gap-4 mb-4">
+              <Filter className="w-5 h-5 text-gray-500" />
+              <h2 className="text-lg font-semibold">Filters</h2>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Status</Label>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL">All</SelectItem>
+                    <SelectItem value="PENDING">Pending</SelectItem>
+                    <SelectItem value="APPROVED">Approved</SelectItem>
+                    <SelectItem value="REJECTED">Rejected</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Search by Employee, Project, or Task</Label>
+                <Popover open={searchOpen} onOpenChange={setSearchOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={searchOpen}
+                      className="w-full justify-between"
+                    >
+                      {searchTerm || "Type to search..."}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[400px] p-0">
+                    <Command>
+                      <CommandInput
+                        placeholder="Search employee, project, or task..."
+                        value={searchTerm}
+                        onValueChange={setSearchTerm}
+                      />
+                      <CommandList>
+                        <CommandEmpty>No results found.</CommandEmpty>
+                        {searchOptions.employees.length > 0 && (
+                          <CommandGroup heading="Employees">
+                            {searchOptions.employees.map((employee) => (
+                              <CommandItem
+                                key={employee}
+                                value={employee}
+                                onSelect={(value) => {
+                                  setSearchTerm(value);
+                                  setSearchOpen(false);
+                                }}
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    searchTerm === employee
+                                      ? "opacity-100"
+                                      : "opacity-0"
+                                  )}
+                                />
+                                {employee}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
                         )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        )}
-      </Card>
+                        {searchOptions.projects.length > 0 && (
+                          <CommandGroup heading="Projects">
+                            {searchOptions.projects.map((project) => (
+                              <CommandItem
+                                key={project}
+                                value={project}
+                                onSelect={(value) => {
+                                  setSearchTerm(value);
+                                  setSearchOpen(false);
+                                }}
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    searchTerm === project
+                                      ? "opacity-100"
+                                      : "opacity-0"
+                                  )}
+                                />
+                                {project}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        )}
+                        {searchOptions.tasks.length > 0 && (
+                          <CommandGroup heading="Tasks">
+                            {searchOptions.tasks.map((task) => (
+                              <CommandItem
+                                key={task}
+                                value={task}
+                                onSelect={(value) => {
+                                  setSearchTerm(value);
+                                  setSearchOpen(false);
+                                }}
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    searchTerm === task
+                                      ? "opacity-100"
+                                      : "opacity-0"
+                                  )}
+                                />
+                                {task}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        )}
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+                {searchTerm && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSearchTerm("")}
+                    className="h-8 px-2 lg:px-3"
+                  >
+                    Clear search
+                    <X className="ml-2 h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+            </div>
+          </Card>
+
+          {/* Time Logs Table */}
+          <Card className="p-6">
+            <div className="flex items-center gap-2 mb-6">
+              <Clock className="w-5 h-5 text-blue-600" />
+              <h2 className="text-xl font-semibold text-gray-900">Time Logs</h2>
+              <Badge className="ml-2">{filteredLogs.length} entries</Badge>
+            </div>
+
+            {loading ? (
+              <div className="text-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+                <p className="text-gray-500 mt-4">Loading time logs...</p>
+              </div>
+            ) : filteredLogs.length === 0 ? (
+              <div className="text-center py-12 text-gray-500">
+                <Clock className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                <p>No time logs found</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-32">Employee</TableHead>
+                      <TableHead className="w-36">Date</TableHead>
+                      <TableHead className="w-40">Project</TableHead>
+                      <TableHead className="w-32">Task</TableHead>
+                      <TableHead className="w-20 text-right">Hours</TableHead>
+                      <TableHead className="w-24">Status</TableHead>
+                      <TableHead className="w-64">Notes</TableHead>
+                      <TableHead className="w-32 text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredLogs.map((log) => (
+                      <TableRow key={log.id}>
+                        <TableCell className="font-medium w-32">
+                          {log.employeeName || "Unknown"}
+                        </TableCell>
+                        <TableCell className="w-36">
+                          <div className="flex flex-col">
+                            <span className="whitespace-nowrap">
+                              {formatDateOnly(log.loggedAt)}
+                            </span>
+                            <span className="text-sm text-gray-500">
+                              {formatTimeOnly(log.loggedAt)}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="w-40">
+                          {log.projectTitle}
+                        </TableCell>
+                        <TableCell className="w-32">{log.taskName}</TableCell>
+                        <TableCell className="w-20 text-right font-semibold">
+                          {log.hours.toFixed(2)}
+                        </TableCell>
+                        <TableCell className="w-24">
+                          {getStatusBadge(log.approvalStatus)}
+                        </TableCell>
+                        <TableCell className="w-64 whitespace-normal break-words text-sm">
+                          {log.note || "-"}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            {log.approvalStatus === "PENDING" && (
+                              <>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleApprove(log.id)}
+                                  className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                                >
+                                  <Check className="w-4 h-4 mr-1" />
+                                  Approve
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => openRejectDialog(log)}
+                                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                >
+                                  <X className="w-4 h-4 mr-1" />
+                                  Reject
+                                </Button>
+                              </>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="analytics">
+          <TimeLogAnalytics timeLogs={timeLogs} />
+        </TabsContent>
+      </Tabs>
 
       {/* Rejection Dialog */}
       <Dialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>

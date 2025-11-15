@@ -64,187 +64,63 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
+import { api } from '@/lib/api/client';
 import { Employee, EmployeeStats, CreateEmployeeDto, UpdateEmployeeDto } from '@/types/admin';
 
-// Mock data
-const MOCK_STATS: EmployeeStats = {
-  totalEmployees: 12,
-  activeEmployees: 9,
-  onLeave: 2,
-  averageWorkload: 68,
-  overloadedEmployees: 1,
+const EMPLOYEE_API_PATH = '/api/users?role=EMPLOYEE';
+
+type ApiEmployee = {
+  id: number;
+  userName: string;
+  firstName?: string | null;
+  lastName?: string | null;
+  email: string;
+  contactOne?: string | null;
+  contactTwo?: string | null;
+  address?: string | null;
+  role: 'EMPLOYEE' | 'ADMIN' | 'CUSTOMER';
+  enabled: boolean;
+  createdAt?: string | null;
+  updatedAt?: string | null;
 };
 
-const MOCK_EMPLOYEES: Employee[] = [
-  {
-    id: '1',
-    userName: 'John Martinez',
-    email: 'john.martinez@autonova.com',
-    contactOne: '+1 (555) 123-4567',
-    contactTwo: '+1 (555) 123-4568',
-    address: '123 Main St, Los Angeles, CA 90001',
-    hireDate: '2023-01-15',
-    specialization: 'Engine Specialist',
-    status: 'active',
-    role: 'EMPLOYEE',
-    createdAt: '2023-01-15T08:00:00Z',
-    updatedAt: '2023-01-15T08:00:00Z',
-  },
-  {
-    id: '2',
-    userName: 'Sarah Chen',
-    email: 'sarah.chen@autonova.com',
-    contactOne: '+1 (555) 234-5678',
-    contactTwo: '',
-    address: '456 Oak Ave, San Francisco, CA 94102',
-    hireDate: '2023-03-20',
-    specialization: 'Transmission Expert',
-    status: 'active',
-    role: 'EMPLOYEE',
-    createdAt: '2023-03-20T08:00:00Z',
-    updatedAt: '2023-03-20T08:00:00Z',
-  },
-  {
-    id: '3',
-    userName: 'Michael Johnson',
-    email: 'michael.johnson@autonova.com',
-    contactOne: '+1 (555) 345-6789',
-    contactTwo: '+1 (555) 345-6790',
-    address: '789 Pine Rd, Seattle, WA 98101',
-    hireDate: '2022-11-10',
-    specialization: 'Electrical Systems',
-    status: 'active',
-    role: 'EMPLOYEE',
-    createdAt: '2022-11-10T08:00:00Z',
-    updatedAt: '2022-11-10T08:00:00Z',
-  },
-  {
-    id: '4',
-    userName: 'Emily Rodriguez',
-    email: 'emily.rodriguez@autonova.com',
-    contactOne: '+1 (555) 456-7890',
-    contactTwo: '',
-    address: '321 Elm St, Portland, OR 97201',
-    hireDate: '2023-05-12',
-    specialization: 'Body & Paint',
-    status: 'on_leave',
-    role: 'EMPLOYEE',
-    createdAt: '2023-05-12T08:00:00Z',
-    updatedAt: '2025-11-01T08:00:00Z',
-  },
-  {
-    id: '5',
-    userName: 'David Kim',
-    email: 'david.kim@autonova.com',
-    contactOne: '+1 (555) 567-8901',
-    contactTwo: '+1 (555) 567-8902',
-    address: '654 Maple Dr, Austin, TX 78701',
-    hireDate: '2022-08-05',
-    specialization: 'Brake Systems',
-    status: 'active',
-    role: 'EMPLOYEE',
-    createdAt: '2022-08-05T08:00:00Z',
-    updatedAt: '2022-08-05T08:00:00Z',
-  },
-  {
-    id: '6',
-    userName: 'Lisa Anderson',
-    email: 'lisa.anderson@autonova.com',
-    contactOne: '+1 (555) 678-9012',
-    contactTwo: '',
-    address: '987 Birch Ln, Denver, CO 80202',
-    hireDate: '2023-02-28',
-    specialization: 'Diagnostics',
-    status: 'active',
-    role: 'EMPLOYEE',
-    createdAt: '2023-02-28T08:00:00Z',
-    updatedAt: '2023-02-28T08:00:00Z',
-  },
-  {
-    id: '7',
-    userName: 'Robert Taylor',
-    email: 'robert.taylor@autonova.com',
-    contactOne: '+1 (555) 789-0123',
-    contactTwo: '+1 (555) 789-0124',
-    address: '147 Cedar St, Phoenix, AZ 85001',
-    hireDate: '2022-06-15',
-    specialization: 'HVAC Systems',
-    status: 'active',
-    role: 'EMPLOYEE',
-    createdAt: '2022-06-15T08:00:00Z',
-    updatedAt: '2022-06-15T08:00:00Z',
-  },
-  {
-    id: '8',
-    userName: 'Jennifer White',
-    email: 'jennifer.white@autonova.com',
-    contactOne: '+1 (555) 890-1234',
-    contactTwo: '',
-    address: '258 Spruce Ave, Miami, FL 33101',
-    hireDate: '2023-04-10',
-    specialization: 'Interior & Upholstery',
-    status: 'on_leave',
-    role: 'EMPLOYEE',
-    createdAt: '2023-04-10T08:00:00Z',
-    updatedAt: '2025-10-28T08:00:00Z',
-  },
-  {
-    id: '9',
-    userName: 'James Brown',
-    email: 'james.brown@autonova.com',
-    contactOne: '+1 (555) 901-2345',
-    contactTwo: '+1 (555) 901-2346',
-    address: '369 Willow Rd, Boston, MA 02101',
-    hireDate: '2022-09-22',
-    specialization: 'Suspension & Alignment',
-    status: 'active',
-    role: 'EMPLOYEE',
-    createdAt: '2022-09-22T08:00:00Z',
-    updatedAt: '2022-09-22T08:00:00Z',
-  },
-  {
-    id: '10',
-    userName: 'Maria Garcia',
-    email: 'maria.garcia@autonova.com',
-    contactOne: '+1 (555) 012-3456',
-    contactTwo: '',
-    address: '741 Ash Blvd, Chicago, IL 60601',
-    hireDate: '2023-07-01',
-    specialization: 'Performance Tuning',
-    status: 'active',
-    role: 'EMPLOYEE',
-    createdAt: '2023-07-01T08:00:00Z',
-    updatedAt: '2023-07-01T08:00:00Z',
-  },
-  {
-    id: '11',
-    userName: 'Thomas Wilson',
-    email: 'thomas.wilson@autonova.com',
-    contactOne: '+1 (555) 112-3456',
-    contactTwo: '+1 (555) 112-3457',
-    address: '852 Poplar St, New York, NY 10001',
-    hireDate: '2022-12-08',
-    specialization: 'Exhaust Systems',
-    status: 'inactive',
-    role: 'EMPLOYEE',
-    createdAt: '2022-12-08T08:00:00Z',
-    updatedAt: '2025-10-15T08:00:00Z',
-  },
-  {
-    id: '12',
-    userName: 'Amanda Davis',
-    email: 'amanda.davis@autonova.com',
-    contactOne: '+1 (555) 223-4567',
-    contactTwo: '',
-    address: '963 Hickory Ln, Dallas, TX 75201',
-    hireDate: '2023-06-18',
-    specialization: 'Wheel & Tire Services',
-    status: 'active',
-    role: 'EMPLOYEE',
-    createdAt: '2023-06-18T08:00:00Z',
-    updatedAt: '2023-06-18T08:00:00Z',
-  },
-];
+const mapApiEmployeeToEmployee = (apiEmployee: ApiEmployee): Employee => {
+  const createdAt = apiEmployee.createdAt ?? new Date().toISOString();
+  const updatedAt = apiEmployee.updatedAt ?? createdAt;
+  const hireDate = createdAt.split('T')[0] ?? createdAt;
+
+  return {
+    id: apiEmployee.id.toString(),
+    userName: apiEmployee.userName ?? 'Unnamed Employee',
+    email: apiEmployee.email ?? '',
+    contactOne: apiEmployee.contactOne ?? '',
+    contactTwo: apiEmployee.contactTwo ?? undefined,
+    address: apiEmployee.address ?? undefined,
+    role: apiEmployee.role,
+    status: apiEmployee.enabled ? 'active' : 'inactive',
+    specialization: undefined,
+    hireDate,
+    createdAt,
+    updatedAt,
+  };
+};
+
+const calculateEmployeeStats = (data: Employee[]): EmployeeStats => {
+  const totalEmployees = data.length;
+  const activeEmployees = data.filter((emp) => emp.status === 'active').length;
+  const onLeave = data.filter((emp) => emp.status === 'on_leave').length;
+  const averageWorkload = totalEmployees
+    ? Math.round((activeEmployees / totalEmployees) * 100)
+    : 0;
+
+  return {
+    totalEmployees,
+    activeEmployees,
+    onLeave,
+    averageWorkload,
+    overloadedEmployees: 0,
+  };
+};
 
 export default function AdminEmployees() {
   const { toast } = useToast();
@@ -271,17 +147,19 @@ export default function AdminEmployees() {
     try {
       setLoading(true);
       
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 800));
-      
-      // Use mock data
-      setEmployees(MOCK_EMPLOYEES);
-      setStats(MOCK_STATS);
+      const apiEmployees = await api<ApiEmployee[]>(EMPLOYEE_API_PATH);
+      const mappedEmployees = apiEmployees.map(mapApiEmployeeToEmployee);
+
+      setEmployees(mappedEmployees);
+      setStats(calculateEmployeeStats(mappedEmployees));
     } catch (error) {
       console.error('Failed to load employee data:', error);
       toast({
         title: 'Error',
-        description: 'Failed to load employee data',
+        description:
+          error instanceof Error
+            ? error.message
+            : 'Failed to load employee data',
         variant: 'destructive',
       });
     } finally {
@@ -342,7 +220,9 @@ export default function AdminEmployees() {
         updatedAt: new Date().toISOString(),
       };
       
-      setEmployees([...employees, newEmployee]);
+      const updatedEmployees = [...employees, newEmployee];
+      setEmployees(updatedEmployees);
+      setStats(calculateEmployeeStats(updatedEmployees));
       
       toast({
         title: 'Success',
@@ -384,11 +264,14 @@ export default function AdminEmployees() {
       await new Promise(resolve => setTimeout(resolve, 500));
       
       // Update employee in mock data
-      setEmployees(employees.map(emp => 
+      const updatedEmployees = employees.map(emp => 
         emp.id === selectedEmployee.id 
           ? { ...emp, ...updateData, updatedAt: new Date().toISOString() }
           : emp
-      ));
+      );
+
+      setEmployees(updatedEmployees);
+      setStats(calculateEmployeeStats(updatedEmployees));
       
       toast({
         title: 'Success',
@@ -413,7 +296,9 @@ export default function AdminEmployees() {
       await new Promise(resolve => setTimeout(resolve, 500));
       
       // Remove employee from mock data
-      setEmployees(employees.filter(emp => emp.id !== selectedEmployee.id));
+      const updatedEmployees = employees.filter(emp => emp.id !== selectedEmployee.id);
+      setEmployees(updatedEmployees);
+      setStats(calculateEmployeeStats(updatedEmployees));
       
       toast({
         title: 'Success',
@@ -436,11 +321,14 @@ export default function AdminEmployees() {
       await new Promise(resolve => setTimeout(resolve, 500));
       
       // Update employee status in mock data
-      setEmployees(employees.map(emp => 
+      const updatedEmployees = employees.map(emp => 
         emp.id === employee.id 
           ? { ...emp, status: newStatus, updatedAt: new Date().toISOString() }
           : emp
-      ));
+      );
+
+      setEmployees(updatedEmployees);
+      setStats(calculateEmployeeStats(updatedEmployees));
       
       toast({
         title: 'Success',
