@@ -2,9 +2,12 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { fetchAssignedTasks, updateTaskStatus } from "@/services/projectService";
-import type { ProjectTask, TaskStatus } from "@/types/project";
+import type { ProjectTask, TaskPriority, TaskStatus } from "@/types/project";
 
 const formatDate = (value?: string) => (value ? new Date(value).toLocaleString() : "—");
+
+const taskStatusValues: TaskStatus[] = ["Requested", "Accepted", "InProgress", "Completed", "Cancelled"];
+const taskPriorityValues: TaskPriority[] = ["urgent", "high", "normal", "low"];
 
 const nextAvailableStatuses: Record<TaskStatus, TaskStatus[]> = {
   Requested: ["Accepted", "Cancelled"],
@@ -21,14 +24,28 @@ export default function EmployeeTasks() {
 
   const load = async () => {
     try {
+      console.log("[DEBUG] Starting to load tasks...");
       setLoading(true);
       setError(null);
       const data = await fetchAssignedTasks();
+      console.log("[DEBUG] Tasks loaded successfully:", data);
+      const statusCounts = taskStatusValues.reduce<Record<TaskStatus, number>>((acc, status) => {
+        acc[status] = data.filter((t) => t.status === status).length;
+        return acc;
+      }, {} as Record<TaskStatus, number>);
+      const priorityCounts = taskPriorityValues.reduce<Record<TaskPriority, number>>((acc, priority) => {
+        acc[priority] = data.filter((t) => t.priority === priority).length;
+        return acc;
+      }, {} as Record<TaskPriority, number>);
+      console.log("[DEBUG] Tasks by status:", statusCounts);
+      console.log("[DEBUG] Tasks by priority:", priorityCounts);
       setTasks(data);
     } catch (err) {
+      console.error("[DEBUG] Error loading tasks:", err);
       setError(err instanceof Error ? err.message : "Failed to load tasks");
     } finally {
       setLoading(false);
+      console.log("[DEBUG] Loading complete");
     }
   };
 

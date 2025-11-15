@@ -19,6 +19,11 @@ import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import OAuth2Callback from './pages/OAuth2Callback';
 import NotFound from './pages/NotFound';
+import Chatbot_test from "./pages/Chatbot_test";
+import Chatbot from "./components/Chatbot";
+
+// Chatbot context
+import { ChatbotStatusProvider } from "./hooks/useChatbotStatus";
 
 // Customer pages
 import CustomerDashboard from "./pages/customer/CustomerDashboard";
@@ -107,7 +112,8 @@ const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <TooltipProvider>
+          <ChatbotStatusProvider>
+            <TooltipProvider>
             <Toaster />
             <Sonner />
             <BrowserRouter>
@@ -119,7 +125,6 @@ const App = () => {
                 <Route path="/forgot-password" element={<ForgotPassword />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
                 <Route path="/oauth2/callback" element={<OAuth2Callback />} />
-
                 <Route
                   path="/profile"
                   element={
@@ -150,6 +155,8 @@ const App = () => {
                 <Route path="/test/book-appointment" element={<BookAppointment />} />
                 <Route path="/test/appointments" element={<MyAppointments />} />
                 <Route path="/test/progress/:projectId" element={<CustomerProjectProgress />} />
+                <Route path="/test/employee/progress/:projectId" element={<EmployeeProjectProgress />} />
+                <Route path="/test/chatbot-test" element={<Chatbot_test />} />
 
                 {/* Customer routes */}
                 <Route
@@ -214,8 +221,13 @@ const App = () => {
                 {/* 404 */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
+
+              {/* Global Chatbot - provide paths to disable the floating button here */}
+              <Chatbot disabledPaths={["/login", "/register", "/admin", "/admin/*"]} />
+
             </BrowserRouter>
           </TooltipProvider>
+        </ChatbotStatusProvider>
       </AuthProvider>
     </QueryClientProvider>
   );

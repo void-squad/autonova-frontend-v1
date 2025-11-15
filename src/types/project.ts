@@ -12,6 +12,8 @@ export type TaskStatus =
   | "Completed"
   | "Cancelled";
 
+export type TaskPriority = "urgent" | "high" | "normal" | "low";
+
 export interface ProjectSummary {
   projectId: string;
   vehicleId: string;
@@ -38,6 +40,8 @@ export interface ProjectTask {
   appointmentId?: string;
   createdAt: string;
   updatedAt: string;
+  priority?: TaskPriority;
+  projectId?: string;
 }
 
 export interface ProjectActivity {

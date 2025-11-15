@@ -539,15 +539,16 @@ export const TimeLoggingPage = () => {
     let filtered = [...timeLogs];
 
     if (appliedFilters.startDate) {
-      filtered = filtered.filter(
-        (log) => new Date(log.loggedAt) >= new Date(appliedFilters.startDate!)
-      );
+      const start = new Date(appliedFilters.startDate!);
+      start.setHours(0, 0, 0, 0);
+      filtered = filtered.filter((log) => new Date(log.loggedAt) >= start);
     }
 
     if (appliedFilters.endDate) {
-      filtered = filtered.filter(
-        (log) => new Date(log.loggedAt) <= new Date(appliedFilters.endDate!)
-      );
+      const end = new Date(appliedFilters.endDate!);
+      // Include the entire selected day by setting time to end of day
+      end.setHours(23, 59, 59, 999);
+      filtered = filtered.filter((log) => new Date(log.loggedAt) <= end);
     }
 
     if (appliedFilters.projectId && appliedFilters.projectId !== "all") {

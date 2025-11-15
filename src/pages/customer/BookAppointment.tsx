@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Calendar, Car, Clock, Wrench, ArrowLeft, Loader2, FileText } from 'lucide-react';
+import { api } from '@/lib/api/axios-config';
+import { Vehicle } from '@/types';
 
 const SERVICE_TYPES = ['General Service', 'Oil Change', 'Brake Service', 'Engine Diagnostics', 'AC Service', 'Battery Replacement', 'Tire Replacement', 'Wheel Alignment', 'Full Inspection', 'Detailing Service'];
 
@@ -13,13 +15,41 @@ const mockTimeSlots = ['09:00 AM', '10:00 AM', '11:00 AM', '01:00 PM', '02:00 PM
 
 export default function BookAppointment() {
   const [loading, setLoading] = useState(false);
-  const [vehicles] = useState(mockVehicles);
+  const [vehicles, setVehicles] = useState<Array<{ id: string; name: string }>>(mockVehicles);
   const [availableSlots, setAvailableSlots] = useState(mockTimeSlots);
   const [loadingSlots, setLoadingSlots] = useState(false);
-  const [errors, setErrors] = useState({});
-  const [formData, setFormData] = useState({ vehicleId: '', serviceType: '', appointmentDate: '', timeSlot: '', notes: '' });
+  type FormData = {
+    vehicleId: string;
+    serviceType: string;
+    appointmentDate: string;
+    timeSlot: string;
+    notes: string;
+  };
+  type FormErrors = Partial<Record<keyof FormData, string>>;
+
+  const [errors, setErrors] = useState<FormErrors>({});
+  const [formData, setFormData] = useState<FormData>({ vehicleId: '', serviceType: '', appointmentDate: '', timeSlot: '', notes: '' });
 
   useEffect(() => {
+    // Fetch vehicles for the authenticated customer when the page loads
+    const fetchVehicles = async () => {
+      try {
+        const data = await api<Vehicle[]>('/api/customers/me/vehicles');
+        if (Array.isArray(data)) {
+          const mapped = data.map((v) => ({
+            id: String(v.id),
+            name: `${v.year} ${v.make} ${v.model} - ${v.licensePlate}`,
+          }));
+          setVehicles(mapped);
+        }
+      } catch (err) {
+        // Keep mock vehicles on error and log for debugging
+        // console.error('Failed to load vehicles', err);
+      }
+    };
+
+    fetchVehicles();
+
   if (formData.appointmentDate) {
     setLoadingSlots(true);
 
@@ -51,7 +81,7 @@ export default function BookAppointment() {
 
 
   const validate = () => {
-    const newErrors = {};
+    const newErrors: FormErrors = {};
     if (!formData.vehicleId) newErrors.vehicleId = 'Please select a vehicle';
     if (!formData.serviceType) newErrors.serviceType = 'Please select a service type';
     if (!formData.appointmentDate) newErrors.appointmentDate = 'Please select a date';
@@ -80,17 +110,23 @@ export default function BookAppointment() {
 
     const end = new Date(start.getTime() + 60 * 60 * 1000); // +1 hour slot
 
+    const selectedVehicleId = formData.vehicleId;
+    const vehicleUuid = selectedVehicleId
+      ? `00000000-0000-0000-0000-${String(selectedVehicleId).padStart(12, '0')}`
+      : null;
+    const vehicleName = vehicles.find((v) => v.id === formData.vehicleId)?.name || 'Unknown';
+
     const payload = {
-  customerId: customerUuid, // or just customerId if backend accepts number
-  customerUsername: user.userName,
-  vehicleId: "11111111-1111-1111-1111-111111111111",
-  vehicleName: vehicles.find(v => v.id === formData.vehicleId)?.name || "Unknown",
-  serviceType: formData.serviceType,
-  startTime: start.toISOString(),
-  endTime: end.toISOString(),
-  preferredEmployeeId: null,
-  notes: formData.notes
-};
+      customerId: customerUuid,
+      customerUsername: user?.userName,
+      vehicleId: vehicleUuid,
+      vehicleName,
+      serviceType: formData.serviceType,
+      startTime: start.toISOString(),
+      endTime: end.toISOString(),
+      preferredEmployeeId: null,
+      notes: formData.notes,
+    };
 
 
     const res = await fetch("/api/v1/appointments", {
