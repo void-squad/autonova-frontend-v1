@@ -1,214 +1,279 @@
-import { useEffect, useMemo, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, RefreshCcw, Calendar, ShieldCheck } from "lucide-react";
-import { listAdminAppointments, updateAdminAppointmentStatus } from "@/services/projectService";
-import type { AdminAppointment } from "@/types/appointment";
+import { useState, useEffect } from 'react';
+import { Calendar, Car, Clock, Check, X, Filter, Search, User, Loader2 } from 'lucide-react';
 
-const formatDateTime = (value?: string) => (value ? new Date(value).toLocaleString() : "—");
-
-const normalizeStatus = (value: string) => value.split("_").map((part) => part.charAt(0) + part.slice(1).toLowerCase()).join(" ");
-
-const statusOptions = ["ALL", "PENDING", "CONFIRMED", "IN_PROGRESS", "COMPLETED", "CANCELLED"];
-
-export default function ManageAppointments() {
-  const [appointments, setAppointments] = useState<AdminAppointment[]>([]);
+export default function AppointmentManagement() {
+  const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [status, setStatus] = useState("PENDING");
-  const [fromDate, setFromDate] = useState("");
-  const [search, setSearch] = useState("");
-  const [submittingId, setSubmittingId] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [filterDate, setFilterDate] = useState('');
+  const [filterEmployee, setFilterEmployee] = useState('all');
+  const [assignModal, setAssignModal] = useState(null);
+  const [selectedEmployee, setSelectedEmployee] = useState('');
+  const [employees, setEmployees] = useState([]);
 
+  // ✅ Fetch all appointments
   useEffect(() => {
-    let active = true;
-    const load = async () => {
+    const fetchAppointments = async () => {
       try {
         setLoading(true);
-        setError(null);
-        const isoDate = fromDate ? new Date(fromDate).toISOString() : undefined;
-        const data = await listAdminAppointments(status === "ALL" ? undefined : status, isoDate, undefined);
-        if (!active) return;
-        setAppointments(data);
+        const res = await fetch('http://localhost:8080/api/v1/appointments/all', {
+          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+        });
+        if (!res.ok) throw new Error('Failed to fetch appointments');
+        const data = await res.json();
+
+        const formatted = data.map(a => {
+          const rawStatus = String(a.status).replace(/_/g, ' ');
+          const start = new Date(a.startTime);
+          const pad = (n: number) => String(n).padStart(2, '0');
+          const localDate = `${start.getFullYear()}-${pad(start.getMonth()+1)}-${pad(start.getDate())}`;
+          return ({
+            id: a.id,
+            customer: a.customerUsername || 'Unknown Customer',
+            vehicle: a.vehicleName || 'Unknown Vehicle',
+            service: a.serviceType,
+            datetime: new Date(a.startTime).toLocaleString([], {
+              hour: '2-digit', minute: '2-digit', year: 'numeric', month: 'short', day: 'numeric'
+            }),
+            // Local YYYY-MM-DD string for date filter input
+            date: localDate,
+            status: rawStatus.charAt(0).toUpperCase() + rawStatus.slice(1).toLowerCase(),
+            created: new Date(a.createdAt).toISOString().split('T')[0],
+          });
+        });
+
+
+        setAppointments(formatted);
       } catch (err) {
-        if (!active) return;
-        setError(err instanceof Error ? err.message : "Unable to load appointments");
+        console.error(err);
       } finally {
-        if (!active) return;
         setLoading(false);
       }
     };
-    load();
-    return () => {
-      active = false;
+
+    fetchAppointments();
+  }, []);
+
+  // ✅ (Optional) Fetch employee list (if backend endpoint exists)
+  useEffect(() => {
+    const fetchEmployees = async () => {
+      try {
+        const res = await fetch('http://localhost:8080/api/v1/employees', {
+          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+        });
+        if (!res.ok) throw new Error('Failed to fetch employees');
+        const data = await res.json();
+        setEmployees(data.map(e => ({ id: e.id, name: e.name })));
+      } catch {
+        setEmployees([]); // fallback if no endpoint yet
+      }
     };
-  }, [status, fromDate]);
+    fetchEmployees();
+  }, []);
 
-  const filtered = useMemo(() => {
-    if (!search) return appointments;
-    const term = search.toLowerCase();
-    return appointments.filter((appt) =>
-      [appt.serviceType, appt.customerId, appt.vehicleId].some((field) => field?.toLowerCase().includes(term)),
-    );
-  }, [appointments, search]);
+  // ✅ Helpers
+  const getStatusColor = (status) => {
+    const colors = {
+      Pending: 'bg-yellow-100 text-yellow-800 border-yellow-300',
+      Accepted: 'bg-green-100 text-green-800 border-green-300',
+      'In progress': 'bg-indigo-100 text-indigo-800 border-indigo-300',
+      Completed: 'bg-blue-100 text-blue-800 border-blue-300',
+      Rejected: 'bg-red-100 text-red-800 border-red-300',
+      Cancelled: 'bg-gray-100 text-gray-800 border-gray-300',
+    };
+    return colors[status] || '';
+  };
 
-  const handleUpdateStatus = async (id: string, nextStatus: string) => {
+  // ✅ Update status (Accept / Reject / Complete)
+  const handleStatusChange = async (id, newStatus) => {
+    if (!confirm(`Are you sure you want to mark this as ${newStatus}?`)) return;
+
     try {
-      setSubmittingId(id);
-      await updateAdminAppointmentStatus(id, nextStatus, `Updated via admin console (${nextStatus})`);
-      const updated = await listAdminAppointments(status === "ALL" ? undefined : status, fromDate ? new Date(fromDate).toISOString() : undefined, undefined);
-      setAppointments(updated);
+      const res = await fetch(`http://localhost:8080/api/v1/appointments/${id}/status?status=${newStatus}`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+      });
+      if (!res.ok) throw new Error('Failed to update status');
+
+      setAppointments(appointments.map(a =>
+        a.id === id ? { ...a, status: newStatus.charAt(0).toUpperCase() + newStatus.slice(1).toLowerCase() } : a
+      ));
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Unable to update appointment status");
-    } finally {
-      setSubmittingId(null);
+      console.error(err);
+      alert('Error updating appointment status');
     }
   };
 
-  const stats = useMemo(() => {
-    const total = appointments.length;
-    const pending = appointments.filter((a) => a.status === "PENDING").length;
-    const confirmed = appointments.filter((a) => a.status === "CONFIRMED").length;
-    const converted = appointments.filter((a) => a.status === "IN_PROGRESS").length;
-    return { total, pending, confirmed, converted };
-  }, [appointments]);
+  // ✅ Filters
+  const filteredAppointments = appointments.filter(apt => {
+    const matchesSearch =
+      apt.customer.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      apt.vehicle.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      apt.service.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = filterStatus === 'all' || apt.status.toLowerCase() === filterStatus;
+    const matchesDate = !filterDate || apt.date === filterDate;
+    const matchesEmployee = filterEmployee === 'all' || apt.employee === filterEmployee;
+    return matchesSearch && matchesStatus && matchesDate && matchesEmployee;
+  });
+
+  const stats = {
+    total: appointments.length,
+    pending: appointments.filter(a => a.status === 'Pending').length,
+    accepted: appointments.filter(a => a.status === 'Accepted').length,
+    inProgress: appointments.filter(a => a.status === 'In progress').length,
+    completed: appointments.filter(a => a.status === 'Completed').length,
+  };
+
+  // ✅ Loading state
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Loader2 className="h-10 w-10 text-blue-600 animate-spin" />
+      </div>
+    );
+  }
 
   return (
-    <>
-      <div className="space-y-6">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-3xl font-bold">Appointment Intake</h1>
-            <p className="text-muted-foreground">Review customer bookings before converting them into projects.</p>
+    <div className="min-h-screen bg-gray-50">
+      <header className="border-b bg-white">
+        <div className="max-w-7xl mx-auto flex h-16 items-center justify-between px-4">
+          <div className="flex items-center space-x-2">
+            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-blue-700 shadow-lg">
+              <Car className="h-6 w-6 text-white" />
+            </span>
+            <span className="text-2xl font-bold">Autonova Admin</span>
           </div>
-          <Button variant="outline" onClick={() => setFromDate("")}>
-            <RefreshCcw className="h-4 w-4 mr-2" />
-            Reset filters
-          </Button>
+          <div className="flex items-center gap-3">
+            <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">Administrator</span>
+          </div>
+        </div>
+      </header>
+
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold mb-2">Appointment Management</h1>
+          <p className="text-gray-600 text-lg">Manage and track all service appointments</p>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm text-muted-foreground">Total reviewed</CardTitle>
-            </CardHeader>
-            <CardContent className="text-3xl font-bold">{stats.total}</CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm text-muted-foreground">Pending</CardTitle>
-            </CardHeader>
-            <CardContent className="text-3xl font-bold text-yellow-600">{stats.pending}</CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm text-muted-foreground">Confirmed</CardTitle>
-            </CardHeader>
-            <CardContent className="text-3xl font-bold text-blue-600">{stats.confirmed}</CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm text-muted-foreground">Converted (In progress)</CardTitle>
-            </CardHeader>
-            <CardContent className="text-3xl font-bold text-emerald-600">{stats.converted}</CardContent>
-          </Card>
+        {/* ✅ Stats Section */}
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
+          <div className="bg-white border rounded-lg p-4">
+            <div className="text-sm text-gray-600 mb-1">Total Appointments</div>
+            <div className="text-3xl font-bold">{stats.total}</div>
+          </div>
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+            <div className="text-sm text-yellow-800 mb-1">Pending</div>
+            <div className="text-3xl font-bold text-yellow-900">{stats.pending}</div>
+          </div>
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+            <div className="text-sm text-green-800 mb-1">Accepted</div>
+            <div className="text-3xl font-bold text-green-900">{stats.accepted}</div>
+          </div>
+          <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4">
+            <div className="text-sm text-indigo-800 mb-1">In Progress</div>
+            <div className="text-3xl font-bold text-indigo-900">{stats.inProgress}</div>
+          </div>
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="text-sm text-blue-800 mb-1">Completed</div>
+            <div className="text-3xl font-bold text-blue-900">{stats.completed}</div>
+          </div>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Filters</CardTitle>
-          </CardHeader>
-          <CardContent className="grid gap-4 md:grid-cols-4">
-            <Select value={status} onValueChange={setStatus}>
-              <SelectTrigger>
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                {statusOptions.map((option) => (
-                  <SelectItem key={option} value={option}>
-                    {normalizeStatus(option)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
-            <div className="md:col-span-2">
-              <Input placeholder="Search by vehicle, customer ID or service" value={search} onChange={(e) => setSearch(e.target.value)} />
+        {/* ✅ Filter Section */}
+        <div className="bg-white border rounded-lg p-6 mb-6">
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search by customer, vehicle, or service..."
+                className="w-full pl-10 pr-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
             </div>
-          </CardContent>
-        </Card>
-
-        {loading ? (
-          <div className="flex h-48 items-center justify-center">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <select className="px-4 py-2 border rounded-md" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
+              <option value="all">All Status</option>
+              <option value="pending">Pending</option>
+              <option value="accepted">Accepted</option>
+              <option value="in progress">In Progress</option>
+              <option value="completed">Completed</option>
+              <option value="rejected">Rejected</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
+            <input type="date" className="px-4 py-2 border rounded-md" value={filterDate} onChange={(e) => setFilterDate(e.target.value)} />
+      
           </div>
-        ) : error ? (
-          <Card>
-            <CardContent className="py-12 text-center text-destructive font-medium">{error}</CardContent>
-          </Card>
-        ) : (
-          <Card>
-            <CardHeader>
-              <CardTitle>Appointments ({filtered.length})</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {filtered.length === 0 ? (
-                <p className="text-center text-muted-foreground py-12">No appointments match the selected filters.</p>
-              ) : (
-                filtered.map((appt) => (
-                  <div key={appt.id} className="border rounded-lg p-4 space-y-3">
-                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                      <div>
-                        <p className="font-semibold">{appt.serviceType}</p>
-                        <p className="text-sm text-muted-foreground flex items-center gap-2">
-                          <Calendar className="h-4 w-4" />
-                          {formatDateTime(appt.startTime)} – {formatDateTime(appt.endTime)}
-                        </p>
+        </div>
+
+        {/* ✅ Appointment Table */}
+        <div className="bg-white border rounded-lg overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50 border-b">
+                <tr>
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Customer</th>
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Vehicle</th>
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Service</th>
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Appointment Date & Time</th>
+
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Status</th>
+                 
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {filteredAppointments.map((apt) => (
+                  <tr key={apt.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4">
+                      <div className="font-medium">{apt.customer}</div>
+                      {/* <div className="text-sm text-gray-500">ID: {apt.id}</div> */}
+                    </td>
+                    <td className="px-6 py-4 text-sm">{apt.vehicle}</td>
+                    <td className="px-6 py-4 text-sm">{apt.service}</td>
+                    <td className="px-6 py-4">
+  <div className="text-sm">{apt.datetime}</div>
+</td>
+                    <td className="px-6 py-4">
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(apt.status)}`}>{apt.status}</span>
+                    </td>
+                    
+                    <td className="px-6 py-4">
+                      <div className="flex gap-2">
+                        {apt.status === 'Pending' && (
+                          <>
+                            <button
+                              onClick={() => handleStatusChange(apt.id, 'Accepted')}
+                              className="p-2 bg-green-50 text-green-600 border border-green-200 rounded hover:bg-green-100"
+                            >
+                              <Check className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => handleStatusChange(apt.id, 'Rejected')}
+                              className="p-2 bg-red-50 text-red-600 border border-red-200 rounded hover:bg-red-100"
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          </>
+                        )}
                       </div>
-                      <Badge variant="outline">{normalizeStatus(appt.status)}</Badge>
-                    </div>
-                    <div className="text-sm text-muted-foreground grid gap-1 md:grid-cols-2">
-                      <span>Customer: {appt.customerId}</span>
-                      <span>Vehicle: {appt.vehicleId}</span>
-                      <span>Created: {formatDateTime(appt.createdAt)}</span>
-                      <span>Notes: {appt.notes || "—"}</span>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        disabled={submittingId === appt.id}
-                        onClick={() => handleUpdateStatus(appt.id, "CONFIRMED")}
-                      >
-                        <ShieldCheck className="h-4 w-4 mr-2" />
-                        Mark confirmed
-                      </Button>
-                      <Button
-                        size="sm"
-                        disabled={submittingId === appt.id}
-                        onClick={() => handleUpdateStatus(appt.id, "IN_PROGRESS")}
-                      >
-                        Move to in-progress
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        disabled={submittingId === appt.id}
-                        onClick={() => handleUpdateStatus(appt.id, "CANCELLED")}
-                      >
-                        Cancel
-                      </Button>
-                    </div>
-                  </div>
-                ))
-              )}
-            </CardContent>
-          </Card>
-        )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {filteredAppointments.length === 0 && (
+            <div className="p-12 text-center">
+              <Calendar className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+              <h3 className="text-xl font-semibold mb-2">No appointments found</h3>
+              <p className="text-gray-600">Try adjusting your filters or search criteria.</p>
+            </div>
+          )}
+        </div>
       </div>
-    </>
+    </div>
   );
 }

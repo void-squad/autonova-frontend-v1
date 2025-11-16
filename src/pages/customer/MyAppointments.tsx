@@ -1,14 +1,16 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Calendar, Car, Clock, X, Edit, Filter, Loader2, CheckCircle, AlertTriangle, ChevronDown } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Calendar, Car, Clock, X, Edit, Filter, Loader2, ChevronDown } from 'lucide-react';
 
 export default function MyAppointments() {
+  const navigate = useNavigate();
   const [appointments, setAppointments] = useState([]);
   const [filter, setFilter] = useState('all');
   const [loading, setLoading] = useState(true);
   const [rescheduleModal, setRescheduleModal] = useState(null);
   const [rescheduleData, setRescheduleData] = useState({ date: '', time: '' });
   const [confirmCancelModal, setConfirmCancelModal] = useState(null); // id of appointment to cancel
-  const [notification, setNotification] = useState(null); // { message: string, type: 'success' | 'error' }
+  const [rescheduling, setRescheduling] = useState(false); // Loading state for reschedule
   
   // New state for dynamic slot loading
   const [availableSlots, setAvailableSlots] = useState([]);
@@ -26,8 +28,7 @@ export default function MyAppointments() {
     ? `00000000-0000-0000-0000-${String(customerId).padStart(12, '0')}`
     : null;
 
-  // Use relative API path so dev proxy/gateway handles routing (vite proxy -> http://localhost:8088)
-  const API_BASE = '/api/v1/appointments';
+  const API_BASE = "http://localhost:8080/api/v1/appointments";
 
   // --- Fetch Appointments (Real API Call) ---
   const fetchAppointments = useCallback(async () => {
@@ -50,28 +51,31 @@ export default function MyAppointments() {
       }
       
       const data = await res.json();
-      
-      const formatted = data.map(a => ({
-        id: a.id,
-        vehicle: a.vehicleName || 'Unknown Vehicle',
 
-        service: a.serviceType,
-        // Ensure status is capitalized for display
-        status: a.status.charAt(0).toUpperCase() + a.status.slice(1).toLowerCase(),
-        
-        // Date/Time formatting based on startTime
-        date: new Date(a.startTime).toISOString().split('T')[0],
-        time: new Date(a.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        
-        created: new Date(a.createdAt).toISOString().split('T')[0],
-        startTime: a.startTime,
-        endTime: a.endTime
-      }));
+      const formatted = data.map(a => {
+        const rawStatus = String(a.status).replace(/_/g, ' ');
+        return ({
+          id: a.id,
+          vehicle: a.vehicleName || 'Unknown Vehicle',
+
+          service: a.serviceType,
+          // Normalize status (e.g., IN_PROGRESS -> In progress)
+          status: rawStatus.charAt(0).toUpperCase() + rawStatus.slice(1).toLowerCase(),
+          
+          // Date/Time formatting based on startTime
+          date: new Date(a.startTime).toISOString().split('T')[0],
+          time: new Date(a.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          
+          created: new Date(a.createdAt).toISOString().split('T')[0],
+          startTime: a.startTime,
+          endTime: a.endTime
+        });
+      });
 
       setAppointments(formatted);
     } catch (err) {
       console.error("Error fetching appointments:", err);
-      setNotification({ message: `Could not load appointments. ${err.message || 'Network error.'}`, type: 'error' });
+      alert(`Could not load appointments. ${err.message || 'Network error.'}`);
     } finally {
       setLoading(false);
     }
@@ -121,7 +125,7 @@ const rangeEndISO   = `${selectedDate}T19:00:00${timezoneOffset}`;
 
   } catch (err) {
     console.error("Error fetching available slots:", err);
-    setNotification({ message: `Could not load available slots. ${err.message || 'Network error.'}`, type: 'error' });
+    alert(`Could not load available slots. ${err.message || 'Network error.'}`);
     setAvailableSlots([]);
   } finally {
     setIsSlotLoading(false);
@@ -154,45 +158,44 @@ const rangeEndISO   = `${selectedDate}T19:00:00${timezoneOffset}`;
       });
 
       if (res.ok) {
-        setNotification({ message: `Appointment ${id} cancelled successfully.`, type: 'success' });
+        alert(`Appointment cancelled successfully.`);
         fetchAppointments(); // Refresh list to show 'Cancelled' status
       } else {
         const errorText = await res.text();
-        setNotification({ message: `Failed to cancel appointment ${id}. Error: ${errorText}`, type: 'error' });
+        alert(`Failed to cancel appointment. Error: ${errorText}`);
         console.error("Cancellation failed:", errorText);
       }
 
     } catch (err) {
       console.error(err);
-      setNotification({ message: "An unexpected network error occurred while cancelling the appointment.", type: 'error' });
+      alert("An unexpected network error occurred while cancelling the appointment.");
     }
   };
 
   // --- Reschedule Appointment (Real API Call) ---
   const rescheduleAppointment = async (id, date, time) => {
+    setRescheduling(true);
     try {
-      // 1. Combine date & time and calculate local offset
-      const localDateTime = new Date(`${date}T${time}`);
-      
-      // Calculate Timezone Offset (e.g., +05:30)
-      const offsetMinutes = localDateTime.getTimezoneOffset(); // e.g., -330 for UTC+5:30
-      const offsetHours = Math.abs(Math.floor(offsetMinutes / 60)).toString().padStart(2, "0");
-      const offsetMins = Math.abs(offsetMinutes % 60).toString().padStart(2, "0");
-      // If offsetMinutes is negative (Local is ahead of UTC), sign is +
-      const timezoneOffsetSign = offsetMinutes <= 0 ? "+" : "-";
-      const timezoneOffset = `${timezoneOffsetSign}${offsetHours}:${offsetMins}`;
+      // Helper function to convert "9:00 AM" to "09:00" in 24-hour format
+      const convertTo24Hour = (time12h) => {
+        const [timeStr, modifier] = time12h.split(" ");
+        let [hours, minutes] = timeStr.split(":");
+        if (hours === "12") hours = "00";
+        if (modifier === "PM") hours = String(parseInt(hours, 10) + 12);
+        return `${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}`;
+      };
 
-      // Start Time ISO string
-      const startISO = `${date}T${time}:00${timezoneOffset}`;
+      // Convert the selected time (e.g., "9:00 AM") to 24-hour format (e.g., "09:00")
+      const time24 = convertTo24Hour(time);
 
-      // 2. Fix for 1-hour shift: Calculate the end time string 1 hour later without relying on Date.toISOString()
-      // This ensures we append the correct local offset to the correct local end time.
-      const [hour, minute] = time.split(':').map(Number);
-      const newHour = hour + 1;
-      const endTimeStr = `${String(newHour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+      // Directly construct ISO strings with timezone offset (matching BookAppointment.tsx)
+      const startISO = `${date}T${time24}:00+05:30`;
       
-      // End Time ISO string
-      const endISO = `${date}T${endTimeStr}:00${timezoneOffset}`;
+      // Calculate end time (1 hour later)
+      const [hours, minutes] = time24.split(':').map(Number);
+      const endHour = hours + 1;
+      const endTime24 = `${String(endHour).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+      const endISO = `${date}T${endTime24}:00+05:30`;
 
       console.log(`Attempting reschedule of ${id}. Start ISO: ${startISO}, End ISO: ${endISO}`);
       
@@ -204,19 +207,24 @@ const rangeEndISO   = `${selectedDate}T19:00:00${timezoneOffset}`;
       });
 
       if (res.ok) {
-        setNotification({ message: `Appointment ${id} rescheduled successfully to ${date} ${time}.`, type: 'success' });
+        alert(`Appointment rescheduled successfully to ${date} ${time}.`);
         setRescheduleModal(null); // Close modal
         setRescheduleData({ date: '', time: '' }); // Reset form
-        fetchAppointments(); // Refresh list
+        // Small delay to ensure backend has updated the status
+        setTimeout(() => {
+          fetchAppointments(); // Refresh list
+        }, 500);
       } else {
         const errorText = await res.text();
-        setNotification({ message: `Failed to reschedule appointment ${id}. Error: ${errorText}`, type: 'error' });
+        alert(`Failed to reschedule appointment. Error: ${errorText}`);
         console.error("Reschedule failed:", errorText);
       }
 
     } catch (err) {
       console.error("Error rescheduling appointment:", err);
-      setNotification({ message: "Error rescheduling appointment.", type: 'error' });
+      alert("Error rescheduling appointment.");
+    } finally {
+      setRescheduling(false);
     }
   };
 
@@ -225,6 +233,7 @@ const rangeEndISO   = `${selectedDate}T19:00:00${timezoneOffset}`;
     const colors = {
       Pending: 'bg-yellow-100 text-yellow-800 border-yellow-300',
       Accepted: 'bg-green-100 text-green-800 border-green-300',
+      'In progress': 'bg-indigo-100 text-indigo-800 border-indigo-300',
       Completed: 'bg-blue-100 text-blue-800 border-blue-300',
       Rejected: 'bg-red-100 text-red-800 border-red-300',
       Cancelled: 'bg-gray-200 text-gray-800 border-gray-400'
@@ -239,22 +248,6 @@ const rangeEndISO   = `${selectedDate}T19:00:00${timezoneOffset}`;
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans">
-      
-      {/* Notification Banner */}
-      {notification && (
-        <div className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-xl transition-all duration-300 transform ${
-          notification.type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
-        } animate-bounce-in`} role="alert" onClick={() => setNotification(null)}>
-          <div className="flex items-center">
-            {notification.type === 'success' ? <CheckCircle className="h-5 w-5 mr-2" /> : <AlertTriangle className="h-5 w-5 mr-2" />}
-            <span className="font-medium">{notification.message}</span>
-            <button onClick={() => setNotification(null)} className="ml-4 text-white hover:text-opacity-75">
-              <X className="h-5 w-5" />
-            </button>
-          </div>
-        </div>
-      )}
-
       <header className="border-b bg-white">
         <div className="max-w-7xl mx-auto flex h-16 items-center justify-between px-4">
           <div className="flex items-center space-x-2">
@@ -263,7 +256,10 @@ const rangeEndISO   = `${selectedDate}T19:00:00${timezoneOffset}`;
             </span>
             <span className="text-2xl font-bold">Autonova</span>
           </div>
-          <button className="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-md hover:from-blue-700 hover:to-blue-800 shadow-sm transition-all">
+          <button 
+            onClick={() => navigate('/customer/book-appointment')}
+            className="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-md hover:from-blue-700 hover:to-blue-800 shadow-sm transition-all"
+          >
             Book New Appointment
           </button>
         </div>
@@ -271,7 +267,7 @@ const rangeEndISO   = `${selectedDate}T19:00:00${timezoneOffset}`;
 
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="mb-8">
-          <h1 className="text-4xl font-extrabold mb-2 text-gray-900">My Appointments</h1>
+          <h1 className="text-4xl font-bold mb-2">My Appointments</h1>
           <p className="text-gray-600 text-lg">View and manage your service appointments</p>
         </div>
         
@@ -289,6 +285,7 @@ const rangeEndISO   = `${selectedDate}T19:00:00${timezoneOffset}`;
               <button onClick={() => setFilter('all')} className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${filter === 'all' ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>All</button>
               <button onClick={() => setFilter('pending')} className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${filter === 'pending' ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>Pending</button>
               <button onClick={() => setFilter('accepted')} className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${filter === 'accepted' ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>Accepted</button>
+              <button onClick={() => setFilter('in progress')} className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${filter === 'in progress' ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>In Progress</button>
               <button onClick={() => setFilter('rejected')} className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${filter === 'rejected' ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>Rejected</button>
               <button onClick={() => setFilter('cancelled')} className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${filter === 'cancelled' ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>Cancelled</button>
               <button onClick={() => setFilter('completed')} className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${filter === 'completed' ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>Completed</button>
@@ -300,7 +297,7 @@ const rangeEndISO   = `${selectedDate}T19:00:00${timezoneOffset}`;
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-3">
-                        <h3 className="text-xl font-bold text-gray-800">{apt.service}</h3>
+                        <h3 className="text-xl font-semibold text-gray-800">{apt.service}</h3>
                         <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${getStatusColor(apt.status)}`}>{apt.status}</span>
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
@@ -354,9 +351,12 @@ const rangeEndISO   = `${selectedDate}T19:00:00${timezoneOffset}`;
             {filteredAppointments.length === 0 && (
               <div className="bg-white border rounded-xl p-12 text-center shadow-lg">
                 <Calendar className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold mb-2">No {filter !== 'all' ? filter : ''} appointments found</h3>
+                <h3 className="text-xl font-bold mb-2">No {filter !== 'all' ? filter : ''} appointments found</h3>
                 <p className="text-gray-600 mb-4">It looks like you don't have any appointments matching this status yet.</p>
-                <button className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 shadow-lg font-medium transition-all">
+                <button 
+                  onClick={() => navigate('/customer/book-appointment')}
+                  className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 shadow-lg font-medium transition-all"
+                >
                   Book Your Next Appointment
                 </button>
               </div>
@@ -369,7 +369,7 @@ const rangeEndISO   = `${selectedDate}T19:00:00${timezoneOffset}`;
       {rescheduleModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 transition-opacity">
           <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-2xl transform scale-100 transition-transform">
-            <h3 className="text-2xl font-bold mb-4 text-gray-800">Reschedule Appointment</h3>
+            <h3 className="text-2xl font-semibold mb-4">Reschedule Appointment</h3>
             <p className="text-gray-600 mb-4">{rescheduleModal.service} - {rescheduleModal.vehicle}</p>
             <div className="space-y-4 mb-6">
               <div>
@@ -418,10 +418,17 @@ const rangeEndISO   = `${selectedDate}T19:00:00${timezoneOffset}`;
               <button onClick={() => { setRescheduleModal(null); setRescheduleData({ date: '', time: '' }); setAvailableSlots([]); }} className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 font-medium transition-colors text-gray-700">Cancel</button>
               <button
                 onClick={() => rescheduleAppointment(rescheduleModal.id, rescheduleData.date, rescheduleData.time)}
-                disabled={!rescheduleData.date || !rescheduleData.time || isSlotLoading}
-                className="flex-1 px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={!rescheduleData.date || !rescheduleData.time || isSlotLoading || rescheduling}
+                className="flex-1 px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
-                Confirm Reschedule
+                {rescheduling ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Rescheduling...
+                  </>
+                ) : (
+                  'Confirm Reschedule'
+                )}
               </button>
             </div>
           </div>
@@ -433,7 +440,7 @@ const rangeEndISO   = `${selectedDate}T19:00:00${timezoneOffset}`;
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 transition-opacity">
           <div className="bg-white rounded-xl max-w-sm w-full p-6 shadow-2xl transform scale-100 transition-transform text-center">
             <X className="h-10 w-10 text-red-500 mx-auto mb-3" />
-            <h3 className="text-xl font-bold mb-2 text-gray-800">Confirm Cancellation</h3>
+            <h3 className="text-xl font-semibold mb-2">Confirm Cancellation</h3>
             <p className="text-gray-600 mb-6">Are you sure you want to cancel this appointment? This action cannot be undone.</p>
             <div className="flex gap-3">
               <button onClick={() => setConfirmCancelModal(null)} className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 font-medium transition-colors text-gray-700">Keep Appointment</button>
