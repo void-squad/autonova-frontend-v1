@@ -47,6 +47,8 @@ jobs:
           context: .
           file: ./Dockerfile
           push: true
+          build-args: |
+            VITE_API_BASE_URL=http://209.38.58.147:8080
           tags: |
             sachinthalk/autonova-frontend-v1:${{ github.ref_name }}-${{ steps.short_sha.outputs.short_sha }}
             sachinthalk/autonova-frontend-v1:sha-${{ steps.short_sha.outputs.short_sha }}
@@ -58,6 +60,8 @@ jobs:
           context: .
           file: ./Dockerfile
           push: true
+          build-args: |
+            VITE_API_BASE_URL=http://209.38.58.147:8080
           tags: sachinthalk/autonova-frontend-v1:latest
 
       - name: Push dev-latest tag for dev
@@ -67,4 +71,6 @@ jobs:
           context: .
           file: ./Dockerfile
           push: true
+          build-args: |
+            VITE_API_BASE_URL=http://209.38.58.147:8080
           tags: sachinthalk/autonova-frontend-v1:dev-latest
