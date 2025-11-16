@@ -1,4 +1,4 @@
-import { api, apiConfig } from "@/lib/api/client";
+import { api, apiConfig, getAuthToken } from "@/lib/api/client";
 import type { 
   ProjectMessage, 
   ProjectStatusSummary, 
@@ -100,7 +100,7 @@ export const uploadAndCreateMessage = async (
     formData.append("category", category);
   }
 
-  const token = localStorage.getItem("token");
+  const token = getAuthToken();
   const response = await fetch(
     `${progressApiBaseUrl}/api/projects/${projectId}/messages/upload`,
     {
@@ -127,7 +127,7 @@ export const subscribeToProjectUpdates = (
   onMessage: (message: ProjectMessage) => void,
   onError?: (error: Event) => void
 ): EventSource => {
-  const token = localStorage.getItem("token");
+  const token = getAuthToken();
   // Use gateway URL for SSE connection
   const url = new URL(`${progressApiBaseUrl}/sse/projects/${projectId}`);
   

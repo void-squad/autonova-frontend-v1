@@ -6,6 +6,7 @@ export type ProjectStatus =
   | "Cancelled";
 
 export type TaskStatus =
+  | "Pending"
   | "Requested"
   | "Accepted"
   | "InProgress"

@@ -6,6 +6,11 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
+import DashboardLayout from "@/components/layout/DashboardLayout";
+import EmployeeSidebar from "@/components/layout/EmployeeSidebar";
+import AdminSidebar from "@/components/layout/AdminSidebar";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   Select,
   SelectContent,
@@ -21,6 +26,7 @@ import {
   uploadAndCreateMessage,
   subscribeToProjectUpdates,
 } from "@/services/progressMonitoringService";
+import { apiConfig } from "@/lib/api/client";
 import type { ProjectDetails, TaskStatus } from "@/types/project";
 import type { ProjectMessage, EventCategory } from "@/types/progressMonitoring";
 import {
@@ -51,6 +57,11 @@ const formatRelativeTime = (date: string) => {
   if (diffMins < 60) return `${diffMins}m ago`;
   if (diffHours < 24) return `${diffHours}h ago`;
   return `${diffDays}d ago`;
+};
+
+const isImageFile = (contentType?: string) => {
+  if (!contentType) return false;
+  return contentType.startsWith("image/");
 };
 
 const getCategoryIcon = (category: string) => {
@@ -88,6 +99,7 @@ const getCategoryColor = (category: string) => {
 };
 
 const nextStatuses: Record<TaskStatus, TaskStatus[]> = {
+  Pending: ["Requested", "Cancelled"],
   Requested: ["Accepted", "Cancelled"],
   Accepted: ["InProgress", "Cancelled"],
   InProgress: ["Completed"],
@@ -106,13 +118,14 @@ const categoryOptions: EventCategory[] = [
 
 export default function EmployeeProjectProgressPage() {
   const { projectId } = useParams<{ projectId: string }>();
+  const { user } = useAuth();
   const [project, setProject] = useState<ProjectDetails | null>(null);
   const [messages, setMessages] = useState<ProjectMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isLiveConnected, setIsLiveConnected] = useState(false);
   const eventSourceRef = useRef<EventSource | null>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesTopRef = useRef<HTMLDivElement>(null);
 
   // Form state
   const [newMessage, setNewMessage] = useState("");
@@ -121,8 +134,8 @@ export default function EmployeeProjectProgressPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  const scrollToTop = () => {
+    messagesTopRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
   useEffect(() => {
@@ -144,9 +157,6 @@ export default function EmployeeProjectProgressPage() {
 
         setProject(projectData);
         setMessages(messagesData);
-
-        // Scroll to bottom after messages load
-        setTimeout(scrollToBottom, 100);
       } catch (err) {
         if (!active) return;
         setError(err instanceof Error ? err.message : "Unable to load project");
@@ -165,7 +175,7 @@ export default function EmployeeProjectProgressPage() {
           projectId,
           (newMessage) => {
             setMessages((prev) => [newMessage, ...prev]);
-            setTimeout(scrollToBottom, 100);
+            setTimeout(scrollToTop, 100);
           },
           () => {
             setIsLiveConnected(false);
@@ -230,7 +240,7 @@ export default function EmployeeProjectProgressPage() {
         fileInputRef.current.value = "";
       }
       
-      setTimeout(scrollToBottom, 100);
+      setTimeout(scrollToTop, 100);
     } catch (err) {
       alert(err instanceof Error ? err.message : "Unable to post message");
     } finally {
@@ -244,33 +254,55 @@ export default function EmployeeProjectProgressPage() {
     }
   };
 
+  // Determine which sidebar to use based on user role
+  const sidebar = user?.role === "ADMIN" ? <AdminSidebar /> : <EmployeeSidebar />;
+
   if (!projectId) {
-    return <p className="p-4">Missing project ID.</p>;
+    return (
+      <DashboardLayout sidebar={sidebar}>
+        <p className="p-4">Missing project ID.</p>
+      </DashboardLayout>
+    );
   }
 
   if (loading) {
     return (
-      <div className="flex h-96 items-center justify-center">
-        <div className="text-center">
-          <RefreshCw className="mx-auto h-8 w-8 animate-spin text-muted-foreground" />
-          <p className="mt-2 text-muted-foreground">Loading project…</p>
+      <DashboardLayout sidebar={sidebar}>
+        <div className="mx-auto max-w-7xl space-y-6 p-4">
+          <div className="space-y-4">
+            <Skeleton className="h-8 w-48" />
+            <Skeleton className="h-4 w-64" />
+          </div>
+          <div className="grid gap-6 lg:grid-cols-3">
+            <div className="space-y-6 lg:col-span-1">
+              <Skeleton className="h-48 w-full" />
+              <Skeleton className="h-96 w-full" />
+            </div>
+            <div className="lg:col-span-2 space-y-4">
+              <Skeleton className="h-64 w-full" />
+              <Skeleton className="h-96 w-full" />
+            </div>
+          </div>
         </div>
-      </div>
+      </DashboardLayout>
     );
   }
 
   if (error || !project) {
     return (
-      <div className="p-4">
-        <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4">
-          <p className="text-destructive">{error ?? "Project not found."}</p>
+      <DashboardLayout sidebar={sidebar}>
+        <div className="p-4">
+          <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4">
+            <p className="text-destructive">{error ?? "Project not found."}</p>
+          </div>
         </div>
-      </div>
+      </DashboardLayout>
     );
   }
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6 p-4">
+    <DashboardLayout sidebar={sidebar}>
+      <div className="mx-auto max-w-7xl space-y-6 p-4">
       {/* Header */}
       <div className="flex flex-col gap-4">
         <Link
@@ -299,23 +331,33 @@ export default function EmployeeProjectProgressPage() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        {/* Left Column - Project Details & Tasks */}
-        <div className="space-y-6 lg:col-span-1">
+        {/* Left Column - Project Details, Tasks & Post Update Form */}
+        <div className="space-y-4 lg:col-span-1 overflow-y-auto" style={{ maxHeight: "calc(100vh - 10rem)" }}>
           <Card>
             <CardHeader>
-              <CardTitle>Project Summary</CardTitle>
+              <CardTitle className="text-lg">Project Summary</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div>
-                <p className="text-sm text-muted-foreground">Requested window</p>
-                <p className="font-medium text-sm">{formatDate(project.requestedStart)}</p>
-                <p className="font-medium text-sm">{formatDate(project.requestedEnd)}</p>
+              <div className="space-y-1">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Requested Window</p>
+                <div className="text-sm space-y-0.5">
+                  <p className="font-medium">{formatDate(project.requestedStart)}</p>
+                  <p className="font-medium">{formatDate(project.requestedEnd)}</p>
+                </div>
               </div>
               {project.approvedStart && (
-                <div>
-                  <p className="text-sm text-muted-foreground">Approved window</p>
-                  <p className="font-medium text-sm">{formatDate(project.approvedStart)}</p>
-                  <p className="font-medium text-sm">{formatDate(project.approvedEnd)}</p>
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Approved Window</p>
+                  <div className="text-sm space-y-0.5">
+                    <p className="font-medium text-green-700">{formatDate(project.approvedStart)}</p>
+                    <p className="font-medium text-green-700">{formatDate(project.approvedEnd)}</p>
+                  </div>
+                </div>
+              )}
+              {project.description && (
+                <div className="space-y-1 pt-2 border-t">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Description</p>
+                  <p className="text-sm leading-relaxed">{project.description}</p>
                 </div>
               )}
             </CardContent>
@@ -323,47 +365,51 @@ export default function EmployeeProjectProgressPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Tasks ({project.tasks.length})</CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg">Tasks</CardTitle>
+                <Badge variant="secondary" className="text-xs">{project.tasks.length}</Badge>
+              </div>
             </CardHeader>
             <CardContent className="space-y-3">
-              {project.tasks.map((task) => (
-                <div key={task.taskId} className="rounded-lg border p-3 space-y-2">
-                  <div>
-                    <p className="font-medium text-sm">{task.title}</p>
-                    <p className="text-xs text-muted-foreground">{task.serviceType}</p>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <Badge variant="secondary" className="text-xs">
-                      {task.status}
-                    </Badge>
-                  </div>
-                  {nextStatuses[task.status].length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 pt-1">
-                      {nextStatuses[task.status].map((status) => (
-                        <Button
-                          key={status}
-                          size="sm"
-                          variant={status === "Cancelled" ? "destructive" : "outline"}
-                          onClick={() => handleTaskStatus(task.taskId, status)}
-                          className="h-7 text-xs"
-                        >
-                          {status}
-                        </Button>
-                      ))}
+              {project.tasks.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">No tasks assigned yet.</p>
+              ) : (
+                project.tasks.map((task) => (
+                  <div key={task.taskId} className="rounded-lg border bg-card p-3 space-y-2.5 hover:shadow-sm transition-shadow">
+                    <div>
+                      <p className="font-medium text-sm leading-tight">{task.title}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{task.serviceType}</p>
                     </div>
-                  )}
-                </div>
-              ))}
+                    <div className="flex items-center justify-between">
+                      <Badge variant="secondary" className="text-xs font-medium">
+                        {task.status}
+                      </Badge>
+                    </div>
+                    {nextStatuses[task.status].length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 pt-1 border-t">
+                        {nextStatuses[task.status].map((status) => (
+                          <Button
+                            key={status}
+                            size="sm"
+                            variant={status === "Cancelled" ? "destructive" : "outline"}
+                            onClick={() => handleTaskStatus(task.taskId, status)}
+                            className="h-7 text-xs font-medium"
+                          >
+                            {status}
+                          </Button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
             </CardContent>
           </Card>
-        </div>
 
-        {/* Right Column - Progress Updates & Post Message */}
-        <div className="lg:col-span-2 space-y-4">
           {/* Post Update Form */}
           <Card>
             <CardHeader>
-              <CardTitle>Post Update</CardTitle>
+              <CardTitle className="text-lg">Post Update</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
@@ -447,16 +493,20 @@ export default function EmployeeProjectProgressPage() {
               </Button>
             </CardContent>
           </Card>
+        </div>
 
-          {/* Progress Updates Timeline */}
-          <Card className="h-[calc(100vh-28rem)]">
-            <CardHeader className="border-b">
+        {/* Right Column - Progress Update Messages Only */}
+        <div className="lg:col-span-2" style={{ height: "calc(100vh - 10rem)" }}>
+          {/* Progress Update Messages */}
+          <Card className="flex flex-col h-full">
+            <CardHeader className="border-b flex-shrink-0">
               <div className="flex items-center justify-between">
-                <CardTitle>Progress Timeline</CardTitle>
+                <CardTitle>Progress Update Messages</CardTitle>
                 <Badge variant="secondary">{messages.length} updates</Badge>
               </div>
             </CardHeader>
-            <CardContent className="h-[calc(100%-5rem)] overflow-y-auto p-4">
+            <CardContent className="flex-1 overflow-y-auto p-4">
+              <div ref={messagesTopRef} />
               {messages.length === 0 ? (
                 <div className="flex h-full items-center justify-center">
                   <div className="text-center">
@@ -467,19 +517,19 @@ export default function EmployeeProjectProgressPage() {
                   </div>
                 </div>
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-3">
                   {messages.map((msg) => (
                     <div
                       key={msg.id}
-                      className="rounded-lg border bg-card p-4 transition-shadow hover:shadow-md"
+                      className="rounded-lg border bg-card p-4 shadow-sm transition-all hover:shadow-md"
                     >
                       <div className="flex items-start gap-3">
                         <div
-                          className={`mt-0.5 rounded-full p-2 ${getCategoryColor(msg.category)}`}
+                          className={`mt-0.5 flex-shrink-0 rounded-full p-2 ${getCategoryColor(msg.category)}`}
                         >
                           {getCategoryIcon(msg.category)}
                         </div>
-                        <div className="flex-1 space-y-2">
+                        <div className="flex-1 min-w-0 space-y-2">
                           <div className="flex items-start justify-between gap-2">
                             <div className="flex items-center gap-2 flex-wrap">
                               <Badge variant="outline" className="text-xs">
@@ -505,29 +555,63 @@ export default function EmployeeProjectProgressPage() {
                             </details>
                           )}
                           {msg.attachmentUrl && (
-                            <div className="flex items-center gap-2 rounded-md border p-2">
-                              <FileText className="h-4 w-4 text-muted-foreground" />
-                              <span className="text-sm flex-1">{msg.attachmentFilename}</span>
-                              <a
-                                href={msg.attachmentUrl}
-                                download
-                                className="text-primary hover:underline"
-                              >
-                                <Download className="h-4 w-4" />
-                              </a>
+                            <div className="mt-3">
+                              {isImageFile(msg.attachmentContentType) ? (
+                                <div className="space-y-2">
+                                  <div className="relative group rounded-lg overflow-hidden border bg-muted/30">
+                                    <img
+                                      src={`${apiConfig.API_BASE_URL}${msg.attachmentUrl}`}
+                                      alt={msg.attachmentFilename || "Attachment"}
+                                      className="w-full h-auto object-contain cursor-pointer transition-opacity hover:opacity-90"
+                                      style={{ maxHeight: "320px", maxWidth: "100%" }}
+                                      onClick={() => window.open(`${apiConfig.API_BASE_URL}${msg.attachmentUrl}`, '_blank')}
+                                    />
+                                  </div>
+                                  <div className="flex items-center justify-between gap-2 px-1">
+                                    <span className="text-xs text-muted-foreground truncate flex-1">
+                                      {msg.attachmentFilename}
+                                    </span>
+                                    <a
+                                      href={`${apiConfig.API_BASE_URL}${msg.attachmentUrl}`}
+                                      download={msg.attachmentFilename}
+                                      className="flex items-center gap-1.5 text-xs text-primary hover:underline whitespace-nowrap"
+                                    >
+                                      <Download className="h-3 w-3" />
+                                      Download
+                                    </a>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-2 rounded-md border p-3 bg-muted/50">
+                                  <FileText className="h-5 w-5 text-muted-foreground" />
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium truncate">{msg.attachmentFilename}</p>
+                                    <p className="text-xs text-muted-foreground">
+                                      {msg.attachmentSize ? `${(msg.attachmentSize / 1024).toFixed(1)} KB` : ""}
+                                    </p>
+                                  </div>
+                                  <a
+                                    href={`${apiConfig.API_BASE_URL}${msg.attachmentUrl}`}
+                                    download={msg.attachmentFilename}
+                                    className="text-primary hover:underline flex items-center gap-1"
+                                  >
+                                    <Download className="h-4 w-4" />
+                                  </a>
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>
                       </div>
                     </div>
                   ))}
-                  <div ref={messagesEndRef} />
                 </div>
               )}
             </CardContent>
           </Card>
         </div>
       </div>
-    </div>
+      </div>
+    </DashboardLayout>
   );
 }
