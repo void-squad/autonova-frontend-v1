@@ -43,12 +43,26 @@ export interface ActiveProject {
   progressPercentage: number;
 }
 
+export interface RecentTimeLog {
+  id: string;
+  projectId: string | null;
+  projectTitle: string | null;
+  taskId: string | null;
+  taskName: string | null;
+  hours: number;
+  note: string | null;
+  approvalStatus: string;
+  rejectionReason: string | null;
+  loggedAt: string;
+}
+
 export interface EmployeeDashboardResponse {
   employeeInfo: EmployeeInfo;
   stats: DashboardStats;
   recentActivities: RecentActivity[];
   upcomingTasks: UpcomingTask[];
   activeProjects: ActiveProject[];
+  recentTimeLogs: RecentTimeLog[];
 }
 
 const EMPLOYEE_DASHBOARD_ENDPOINT = `${apiConfig.API_BASE_URL}/api/employee-dashboard`;

@@ -37,6 +37,43 @@ import {
   FilterOptions,
 } from "@/types/timeLogging";
 
+const deriveStats = (logs: TimeLog[], projectList: Project[]): StatsType => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const weekAgo = new Date(today);
+  weekAgo.setDate(weekAgo.getDate() - 7);
+
+  const monthAgo = new Date(today);
+  monthAgo.setMonth(monthAgo.getMonth() - 1);
+
+  const aggregateHours = (since: Date) =>
+    logs
+      .filter((log) => new Date(log.loggedAt) >= since)
+      .reduce((sum, log) => sum + log.hours, 0);
+
+  const todayHours = aggregateHours(today);
+  const weekHours = aggregateHours(weekAgo);
+  const monthHours = aggregateHours(monthAgo);
+
+  const activeProjects = projectList.filter(
+    (project) => project.status === "IN_PROGRESS"
+  ).length;
+
+  const pendingTasks = projectList
+    .flatMap((project) => project.tasks || [])
+    .filter((task) => task.status !== "COMPLETED").length;
+
+  return {
+    todayHours,
+    weekHours,
+    monthHours,
+    totalEarnings: 0,
+    activeProjects,
+    pendingTasks,
+  };
+};
+
 export const TimeLoggingPage = () => {
   // State Management
 
@@ -107,13 +144,16 @@ export const TimeLoggingPage = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timeLogs, appliedFilters]);
 
+  useEffect(() => {
+    setStats(deriveStats(timeLogs, projects));
+  }, [timeLogs, projects]);
+
   const initializePage = async () => {
     setIsLoading(true);
     try {
       await Promise.all([
         fetchProjects(),
         fetchTimeLogs(),
-        fetchStats(),
         fetchWeeklySummary(),
         fetchSmartSuggestions(),
         fetchEfficiency(),
@@ -160,53 +200,6 @@ export const TimeLoggingPage = () => {
     } catch (error) {
       console.error("Error fetching time logs:", error);
       toast.error("Failed to load time logs");
-    }
-  };
-
-  const fetchStats = async () => {
-    try {
-      const logs = await timeLoggingApi.getMyTimeLogs();
-      const projects = await timeLoggingApi.getAssignedProjects();
-
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-
-      const weekAgo = new Date(today);
-      weekAgo.setDate(weekAgo.getDate() - 7);
-
-      const monthAgo = new Date(today);
-      monthAgo.setMonth(monthAgo.getMonth() - 1);
-
-      const todayHours = logs
-        .filter((log) => new Date(log.loggedAt) >= today)
-        .reduce((sum, log) => sum + log.hours, 0);
-
-      const weekHours = logs
-        .filter((log) => new Date(log.loggedAt) >= weekAgo)
-        .reduce((sum, log) => sum + log.hours, 0);
-
-      const monthHours = logs
-        .filter((log) => new Date(log.loggedAt) >= monthAgo)
-        .reduce((sum, log) => sum + log.hours, 0);
-
-      const activeProjects = projects.filter(
-        (p) => p.status === "IN_PROGRESS"
-      ).length;
-
-      const pendingTasks = projects
-        .flatMap((p) => p.tasks || [])
-        .filter((t) => t.status !== "COMPLETED").length;
-
-      setStats({
-        todayHours,
-        weekHours,
-        monthHours,
-        totalEarnings: monthHours * 25, // Mock hourly rate
-        activeProjects,
-        pendingTasks,
-      });
-    } catch (error) {
-      console.error("Error fetching stats:", error);
     }
   };
 
@@ -300,14 +293,13 @@ export const TimeLoggingPage = () => {
       setEfficiencyData(data);
     } catch (error) {
       console.error("Error fetching efficiency:", error);
-      // Use mock data as fallback
       setEfficiencyData({
-        efficiency: 72,
-        weeklyTrend: 8.5,
+        efficiency: 0,
+        weeklyTrend: 0,
         breakdown: {
-          onTime: 85,
-          overEstimate: 23,
-          avgTaskTime: 2.3,
+          onTime: 0,
+          overEstimate: 0,
+          avgTaskTime: 0,
         },
       });
     }
@@ -317,7 +309,6 @@ export const TimeLoggingPage = () => {
     await Promise.all([
       fetchProjects(),
       fetchTimeLogs(),
-      fetchStats(),
       fetchWeeklySummary(),
       fetchSmartSuggestions(),
       fetchEfficiency(),

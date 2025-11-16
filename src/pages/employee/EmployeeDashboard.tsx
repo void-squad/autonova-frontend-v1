@@ -20,11 +20,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { EmployeeStats, EmployeeWorkItem, TaskPriority, TimeLogStats } from '@/types/employee';
+import { EmployeeStats, EmployeeWorkItem, TaskPriority } from '@/types/employee';
 import { Skeleton } from '@/components/ui/skeleton';
 import { 
   fetchEmployeeDashboard, 
-  type EmployeeDashboardResponse 
+  type EmployeeDashboardResponse,
+  type RecentTimeLog,
 } from '@/services/employeeDashboardService';
 
 const normalizePriority = (value?: string | null): TaskPriority => {
@@ -82,10 +83,35 @@ const deriveWorkItems = (data: EmployeeDashboardResponse): EmployeeWorkItem[] =>
   });
 };
 
+const deriveTimeSummary = (logs: RecentTimeLog[]) => {
+  const now = new Date();
+  const startOfDay = new Date(now);
+  startOfDay.setHours(0, 0, 0, 0);
+  const startOfWeek = new Date(startOfDay);
+  const day = startOfWeek.getDay();
+  const diffToMonday = (day + 6) % 7; // convert Sunday=0 to Monday=0 baseline
+  startOfWeek.setDate(startOfWeek.getDate() - diffToMonday);
+
+  return logs.reduce(
+    (acc, log) => {
+      const loggedAt = new Date(log.loggedAt);
+      acc.totalHours += log.hours;
+      if (loggedAt >= startOfWeek) {
+        acc.hoursThisWeek += log.hours;
+      }
+      if (loggedAt >= startOfDay) {
+        acc.hoursToday += log.hours;
+      }
+      return acc;
+    },
+    { hoursThisWeek: 0, hoursToday: 0, totalHours: 0 }
+  );
+};
+
 export default function EmployeeDashboard() {
   const { user } = useAuth();
   const [stats, setStats] = useState<EmployeeStats | null>(null);
-  const [timeLogStats, setTimeLogStats] = useState<TimeLogStats | null>(null);
+  const [timeSummary, setTimeSummary] = useState({ hoursThisWeek: 0, hoursToday: 0, totalHours: 0 });
   const [workItems, setWorkItems] = useState<EmployeeWorkItem[]>([]);
   const [urgentTasks, setUrgentTasks] = useState<EmployeeWorkItem[]>([]);
   const [overdueTasks, setOverdueTasks] = useState<EmployeeWorkItem[]>([]);
@@ -104,6 +130,7 @@ export default function EmployeeDashboard() {
 
       const mappedStats = deriveStats(data);
       const mappedWorkItems = deriveWorkItems(data);
+      const summary = deriveTimeSummary(data.recentTimeLogs ?? []);
       const now = new Date();
 
       setStats(mappedStats);
@@ -114,13 +141,13 @@ export default function EmployeeDashboard() {
           (item) => item.dueDate && new Date(item.dueDate) < now
         )
       );
-      setTimeLogStats(null);
+      setTimeSummary(summary);
     } catch (err) {
       console.error('Failed to load dashboard data:', err);
       setError(err instanceof Error ? err.message : 'Failed to load dashboard data');
       setDashboardData(null);
       setStats(null);
-      setTimeLogStats(null);
+      setTimeSummary({ hoursThisWeek: 0, hoursToday: 0, totalHours: 0 });
       setWorkItems([]);
       setUrgentTasks([]);
       setOverdueTasks([]);
@@ -242,7 +269,7 @@ export default function EmployeeDashboard() {
     },
     { 
       label: 'Hours This Week', 
-      value: timeLogStats?.totalHoursThisWeek || 0, 
+      value: timeSummary.hoursThisWeek, 
       icon: TrendingUp, 
       color: 'text-indigo-600',
       bgColor: 'bg-indigo-100 dark:bg-indigo-900/20',
@@ -351,9 +378,9 @@ export default function EmployeeDashboard() {
             <CardContent>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">
-                  {timeLogStats
-                    ? `${timeLogStats.totalHoursThisWeek} hrs this week`
-                    : 'Insights coming soon'}
+                  {timeSummary.hoursThisWeek > 0
+                    ? `${timeSummary.hoursThisWeek.toFixed(1)} hrs this week`
+                    : 'Log hours to unlock insights'}
                 </span>
                 <ArrowRight className="h-4 w-4" />
               </div>
@@ -361,6 +388,53 @@ export default function EmployeeDashboard() {
           </Card>
         </Link>
       </div>
+
+      {/* Recent Time Logs */}
+      {dashboardData && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Recent Time Logs</CardTitle>
+                <CardDescription>Your latest submitted work hours</CardDescription>
+              </div>
+              <Badge variant="outline">
+                {timeSummary.totalHours.toFixed(1)} hrs total
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {dashboardData.recentTimeLogs.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No time logs recorded yet.</p>
+            ) : (
+              <div className="space-y-3">
+                {dashboardData.recentTimeLogs.map((log) => (
+                  <div key={log.id} className="flex flex-col gap-2 rounded-lg border p-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium">
+                          {log.taskName || log.projectTitle || 'General Work'}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(log.loggedAt).toLocaleString()}
+                        </p>
+                      </div>
+                      <Badge>{`${log.hours} hrs`}</Badge>
+                    </div>
+                    {log.note && (
+                      <p className="text-sm text-muted-foreground">{log.note}</p>
+                    )}
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span>Approval: {log.approvalStatus}</span>
+                      {log.rejectionReason && <span>Reason: {log.rejectionReason}</span>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Recent Activities Section */}
       {dashboardData && dashboardData.recentActivities.length > 0 && (
