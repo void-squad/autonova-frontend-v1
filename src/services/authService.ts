@@ -25,6 +25,28 @@ export interface RegisterData {
   role: 'CUSTOMER' | 'EMPLOYEE' | 'ADMIN';
 }
 
+interface TokenPayload {
+  firstName?: string;
+  email?: string;
+  sub?: string;
+  role?: string;
+  userId?: number;
+  [key: string]: unknown;
+}
+
+/**
+ * Extract firstName from JWT token payload
+ */
+export const extractFirstNameFromToken = (token: string): string | null => {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1])) as TokenPayload;
+    return payload.firstName || null;
+  } catch (e) {
+    console.error('Failed to extract firstName from token:', e);
+    return null;
+  }
+};
+
 export const getStoredUser = (): AuthUser | null => {
   if (typeof window === 'undefined') return null;
   const data = localStorage.getItem(AUTH_USER_KEY);
@@ -59,9 +81,18 @@ export const login = async (
   });
 
   setAuthToken(response.token);
-  storeUser(response.user);
 
-  return response.user;
+  // Extract firstName from token if not already in user object
+  const firstName =
+    response.user.firstName || extractFirstNameFromToken(response.token);
+  const userWithFirstName: AuthUser = {
+    ...response.user,
+    firstName: firstName || undefined,
+  };
+
+  storeUser(userWithFirstName);
+
+  return userWithFirstName;
 };
 
 export const logout = () => {
@@ -96,6 +127,9 @@ export const createVehicle = (payload: VehicleInput) =>
 
 export const listVehicles = () => api<Vehicle[]>('/api/customers/me/vehicles');
 
+export const getVehicleStats = () =>
+  api<{ totalVehicles: number }>('/api/customers/me/vehicles/stats');
+
 export const getVehicle = (vehicleId: number) =>
   api<Vehicle>(`/api/customers/me/vehicles/${vehicleId}`);
 
@@ -126,5 +160,28 @@ export const resetPassword = (token: string, newPassword: string) =>
     method: 'POST',
     body: JSON.stringify({ token, newPassword }),
   });
+
+export const refreshAccessToken = async (): Promise<void> => {
+  try {
+    const response = await api<LoginResponse>('/api/auth/refresh', {
+      method: 'POST',
+    });
+
+    setAuthToken(response.token);
+    storeUser(response.user);
+    console.log('✅ Token refreshed successfully');
+  } catch (error) {
+    console.error('❌ Token refresh failed:', error);
+    // If refresh fails, clear auth state
+    clearAuthToken();
+    clearStoredUser();
+    throw error;
+  }
+};
+
+export const getUserInfo = async (): Promise<AuthUser> => {
+  const response = await api<ProfileResponse>('/api/users/me');
+  return response.user;
+};
 
 export const isAuthenticated = () => Boolean(getAuthToken());

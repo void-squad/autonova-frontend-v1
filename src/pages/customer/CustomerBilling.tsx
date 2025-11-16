@@ -1,24 +1,31 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Pagination, PaginationContent, PaginationItem, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 import { Button } from '@/components/ui/button';
 import { RefreshCw } from 'lucide-react';
-import { InvoiceListQueryParams, InvoiceStatus } from '@/types';
+import { BillingInvoice, InvoiceListQueryParams, InvoiceStatus } from '@/types';
 import { InvoiceFilters } from '@/components/billing/InvoiceFilters';
 import { InvoiceTable } from '@/components/billing/InvoiceTable';
 import { useDebounce } from '@/hooks/use-debounce';
-import { useInvoices } from '@/hooks/use-invoices';
+import { useInvoices, invoiceKeys } from '@/hooks/use-invoices';
 import { formatInvoiceAmount } from '@/components/billing/invoice-utils';
 import { useInvoicePdf } from '@/hooks/use-invoice-pdf';
+import { PayInvoiceDialog } from '@/components/billing/PayInvoiceDialog';
+import { useAuth } from '@/contexts/AuthContext';
+import { useQueryClient } from '@tanstack/react-query';
 
 const CustomerBilling = () => {
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<InvoiceStatus | 'ALL'>('ALL');
   const [limit, setLimit] = useState(10);
   const [page, setPage] = useState(1);
+  const [payDialogOpen, setPayDialogOpen] = useState(false);
+  const [selectedInvoice, setSelectedInvoice] = useState<BillingInvoice | null>(null);
   const debouncedSearch = useDebounce(search, 400);
   const { downloadingId, download } = useInvoicePdf();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     setPage(1);
@@ -63,6 +70,33 @@ const CustomerBilling = () => {
       { openCount: 0, paidCount: 0, openAmount: 0 }
     );
   }, [invoices]);
+
+  const normalizedRole = (user?.role ?? '').toUpperCase();
+  const canPay = normalizedRole === 'CUSTOMER';
+
+  const handleStartPayment = useCallback((invoice: BillingInvoice) => {
+    setSelectedInvoice(invoice);
+    setPayDialogOpen(true);
+  }, []);
+
+  const handlePaymentCompleted = useCallback(
+    (updated: BillingInvoice) => {
+      setPayDialogOpen(false);
+      setSelectedInvoice(null);
+      queryClient.invalidateQueries({ queryKey: invoiceKeys.all });
+    },
+    [queryClient]
+  );
+
+  const renderActions = useCallback(
+    (invoice: BillingInvoice) =>
+      canPay && invoice.status === 'OPEN' ? (
+        <Button size="sm" onClick={() => handleStartPayment(invoice)}>
+          Pay
+        </Button>
+      ) : null,
+    [canPay, handleStartPayment]
+  );
 
   return (
     <div className="space-y-6">
@@ -132,7 +166,12 @@ const CustomerBilling = () => {
       {isLoading ? (
         <InvoiceTableSkeleton />
       ) : (
-        <InvoiceTable invoices={invoices} onDownload={download} downloadingId={downloadingId} />
+        <InvoiceTable
+          invoices={invoices}
+          onDownload={download}
+          downloadingId={downloadingId}
+          renderActions={canPay ? renderActions : undefined}
+        />
       )}
 
       <div className="flex flex-col items-start justify-between gap-4 border-t pt-4 text-sm text-muted-foreground md:flex-row md:items-center">
@@ -170,6 +209,19 @@ const CustomerBilling = () => {
           </PaginationContent>
         </Pagination>
       </div>
+      {canPay && (
+        <PayInvoiceDialog
+          invoice={selectedInvoice}
+          open={payDialogOpen}
+          onOpenChange={(open) => {
+            setPayDialogOpen(open);
+            if (!open) {
+              setSelectedInvoice(null);
+            }
+          }}
+          onPaymentCompleted={handlePaymentCompleted}
+        />
+      )}
     </div>
   );
 };

@@ -26,3 +26,17 @@ export enum AppointmentStatus {
   COMPLETED = "COMPLETED",
   CANCELLED = "CANCELLED"
 }
+
+export interface AdminAppointment {
+  id: string;
+  customerId: string;
+  vehicleId: string;
+  serviceType: string;
+  startTime: string;
+  endTime: string;
+  status: string;
+  assignedEmployeeId?: string | null;
+  notes?: string | null;
+  createdAt: string;
+  updatedAt?: string | null;
+}

@@ -40,29 +40,54 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   );
   const [loading, setLoading] = useState(true);
 
+  // Auto-refresh token before expiration (every 50 minutes if token expires in 1 hour)
+  useEffect(() => {
+    if (!user) return;
+
+    const refreshInterval = setInterval(async () => {
+      try {
+        console.log('🔄 Auto-refreshing token...');
+        await authService.refreshAccessToken();
+      } catch (error) {
+        console.error('Auto-refresh failed:', error);
+        // If refresh fails, user will be logged out on next API call
+        if (error instanceof Error && error.message === 'Session expired') {
+          localStorage.clear();
+          setUser(null);
+          window.location.href = '/login';
+        }
+      }
+    }, 50 * 60 * 1000); // 50 minutes
+
+    return () => clearInterval(refreshInterval);
+  }, [user]);
+
   useEffect(() => {
     // Check if user is already authenticated
     const initAuth = async () => {
-      if (!authService.isAuthenticated()) {
-        setUser(null);
-        setLoading(false);
-        return;
+      const token = localStorage.getItem('authToken');
+      if (token) {
+        try {
+          const currentUser = await authService.getUserInfo();
+          
+          // Extract firstName from token if not already set
+          let userWithFirstName = currentUser;
+          if (!currentUser.firstName) {
+            const firstName = authService.extractFirstNameFromToken(token);
+            if (firstName) {
+              userWithFirstName = { ...currentUser, firstName };
+              authService.storeUser(userWithFirstName);
+            }
+          }
+          
+          setUser(userWithFirstName);
+        } catch (error) {
+          console.error('Failed to get current user:', error);
+          // Clear invalid tokens
+          localStorage.clear();
+        }
       }
-
-      const storedUser = authService.getStoredUser();
-      if (storedUser) {
-        setUser(storedUser);
-      }
-
-      try {
-        await authService.getProfile();
-      } catch (error) {
-        console.error('Failed to validate current session:', error);
-        authService.logout();
-        setUser(null);
-      } finally {
-        setLoading(false);
-      }
+      setLoading(false);
     };
 
     initAuth();

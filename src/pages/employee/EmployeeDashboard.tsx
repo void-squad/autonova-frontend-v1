@@ -1,10 +1,10 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { 
   Wrench, 
   Clock, 
   CheckCircle, 
   AlertTriangle, 
-  FolderKanban, 
+  FolderKanban,
   PlayCircle, 
   Timer, 
   CalendarClock,
@@ -20,14 +20,70 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { employeeApi } from '@/lib/api/employee';
 import { EmployeeStats, EmployeeWorkItem, TaskPriority, TimeLogStats } from '@/types/employee';
-import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
+import { 
+  fetchEmployeeDashboard, 
+  type EmployeeDashboardResponse 
+} from '@/services/employeeDashboardService';
+
+const normalizePriority = (value?: string | null): TaskPriority => {
+  const key = value?.toLowerCase();
+  if (key === 'urgent') return 'urgent';
+  if (key === 'high' || key === 'critical') return 'high';
+  if (key === 'low') return 'low';
+  return 'normal';
+};
+
+const deriveStats = (data: EmployeeDashboardResponse): EmployeeStats => {
+  const urgentTasks = data.upcomingTasks.filter(
+    (task) => normalizePriority(task.priority) === 'urgent'
+  ).length;
+  const overdueTasks = data.upcomingTasks.filter((task) => {
+    if (!task.dueDate) return false;
+    return new Date(task.dueDate) < new Date();
+  }).length;
+  const inProgressProjects = data.activeProjects.filter(
+    (project) => project.status === 'InProgress'
+  ).length;
+
+  return {
+    assignedServices: 0,
+    assignedProjects: data.activeProjects.length,
+    inProgressServices: 0,
+    inProgressProjects,
+    completedToday: data.stats.completedTasksThisWeek,
+    urgentTasks,
+    overdueTasks,
+    totalHoursThisWeek: 0,
+  };
+};
+
+const deriveWorkItems = (data: EmployeeDashboardResponse): EmployeeWorkItem[] => {
+  const projectLookup = new Map(
+    data.activeProjects.map((project) => [project.projectId, project])
+  );
+
+  return data.upcomingTasks.map((task) => {
+    const project = task.projectId ? projectLookup.get(task.projectId) : undefined;
+
+    return {
+      id: task.id,
+      type: project ? 'project' : 'service',
+      title: task.title,
+      description: task.description ?? '',
+      customer: project?.customerName ?? '',
+      vehicle: project?.projectName ?? '',
+      priority: normalizePriority(task.priority),
+      status: 'assigned',
+      dueDate: task.dueDate && task.dueDate !== 'TBD' ? task.dueDate : undefined,
+      progress: project?.progressPercentage,
+    };
+  });
+};
 
 export default function EmployeeDashboard() {
   const { user } = useAuth();
-  const { toast } = useToast();
   const [stats, setStats] = useState<EmployeeStats | null>(null);
   const [timeLogStats, setTimeLogStats] = useState<TimeLogStats | null>(null);
   const [workItems, setWorkItems] = useState<EmployeeWorkItem[]>([]);
@@ -35,33 +91,47 @@ export default function EmployeeDashboard() {
   const [overdueTasks, setOverdueTasks] = useState<EmployeeWorkItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('all');
+  const [dashboardData, setDashboardData] = useState<EmployeeDashboardResponse | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const loadDashboardData = useCallback(async () => {
+  const loadDashboardData = async () => {
     try {
       setLoading(true);
-      // Single BFF call - the backend service aggregates data from multiple microservices
-      const dashboardData = await employeeApi.getDashboardData();
+      setError(null);
 
-      setStats(dashboardData.stats);
-      setTimeLogStats(dashboardData.timeLogStats);
-      setWorkItems(dashboardData.workItems);
-      setUrgentTasks(dashboardData.urgentTasks);
-      setOverdueTasks(dashboardData.overdueTasks);
-    } catch (error) {
-      const err = error as { response?: { data?: { message?: string } } };
-      toast({
-        title: 'Error',
-        description: err.response?.data?.message || 'Failed to load dashboard data',
-        variant: 'destructive',
-      });
+      const data = await fetchEmployeeDashboard();
+      setDashboardData(data);
+
+      const mappedStats = deriveStats(data);
+      const mappedWorkItems = deriveWorkItems(data);
+      const now = new Date();
+
+      setStats(mappedStats);
+      setWorkItems(mappedWorkItems);
+      setUrgentTasks(mappedWorkItems.filter((item) => item.priority === 'urgent'));
+      setOverdueTasks(
+        mappedWorkItems.filter(
+          (item) => item.dueDate && new Date(item.dueDate) < now
+        )
+      );
+      setTimeLogStats(null);
+    } catch (err) {
+      console.error('Failed to load dashboard data:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load dashboard data');
+      setDashboardData(null);
+      setStats(null);
+      setTimeLogStats(null);
+      setWorkItems([]);
+      setUrgentTasks([]);
+      setOverdueTasks([]);
     } finally {
       setLoading(false);
     }
-  }, [toast]);
+  };
 
   useEffect(() => {
     loadDashboardData();
-  }, [loadDashboardData]);
+  }, []);
 
   const getPriorityBadge = (priority: TaskPriority) => {
     const variants: Record<TaskPriority, { variant: 'default' | 'destructive' | 'secondary' | 'outline'; className?: string }> = {
@@ -202,14 +272,16 @@ export default function EmployeeDashboard() {
               Log Time
             </Link>
           </Button>
-          <Button size="sm" asChild>
-            <Link to="/employee/projects">
-              <FolderKanban className="mr-2 h-4 w-4" />
-              View Projects
-            </Link>
-          </Button>
         </div>
       </div>
+
+        {error && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Unable to load dashboard data</AlertTitle>
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
 
       {/* Alerts for Overdue Tasks */}
       {overdueTasks.length > 0 && (
@@ -242,7 +314,7 @@ export default function EmployeeDashboard() {
       </div>
 
       {/* Quick Actions */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2">
         <Link to="/employee/services" className="block">
           <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -265,28 +337,6 @@ export default function EmployeeDashboard() {
           </Card>
         </Link>
 
-        <Link to="/employee/projects" className="block">
-          <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <div>
-                <CardTitle className="text-base">Modification Projects</CardTitle>
-                <CardDescription className="text-xs mt-1">
-                  Manage your projects
-                </CardDescription>
-              </div>
-              <FolderKanban className="h-5 w-5 text-purple-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">
-                  {stats?.assignedProjects || 0} assigned
-                </span>
-                <ArrowRight className="h-4 w-4" />
-              </div>
-            </CardContent>
-          </Card>
-        </Link>
-
         <Link to="/employee/time-logging" className="block">
           <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -301,7 +351,9 @@ export default function EmployeeDashboard() {
             <CardContent>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">
-                  {timeLogStats?.totalHoursThisWeek || 0} hrs this week
+                  {timeLogStats
+                    ? `${timeLogStats.totalHoursThisWeek} hrs this week`
+                    : 'Insights coming soon'}
                 </span>
                 <ArrowRight className="h-4 w-4" />
               </div>
@@ -309,6 +361,94 @@ export default function EmployeeDashboard() {
           </Card>
         </Link>
       </div>
+
+      {/* Recent Activities Section */}
+      {dashboardData && dashboardData.recentActivities.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Recent Activities</CardTitle>
+            <CardDescription>Your latest updates and actions</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {dashboardData.recentActivities.map((activity) => (
+                <div
+                  key={activity.id}
+                  className="flex items-start gap-3 p-3 border rounded-lg"
+                >
+                  <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/20">
+                    <CheckCircle className="h-4 w-4 text-blue-600" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">{activity.description}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {new Date(activity.timestamp).toLocaleString()}
+                    </p>
+                  </div>
+                  <Badge variant={activity.status === 'COMPLETED' ? 'secondary' : 'outline'}>
+                    {activity.status}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Active Projects Section */}
+      {dashboardData && dashboardData.activeProjects.length > 0 && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Active Projects</CardTitle>
+                <CardDescription>Your currently active modification projects</CardDescription>
+              </div>
+              <Button variant="outline" size="sm" asChild>
+                <Link to="/employee/tasks">
+                  Review Tasks
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {dashboardData.activeProjects.map((project) => (
+                <div
+                  key={project.projectId}
+                  className="border rounded-lg p-4 space-y-3"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <h4 className="font-medium">{project.projectName}</h4>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Customer: {project.customerName}
+                      </p>
+                    </div>
+                    <Badge variant={project.status === 'InProgress' ? 'default' : 'outline'}>
+                      {project.status}
+                    </Badge>
+                  </div>
+                  
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Progress</span>
+                      <span className="font-medium">{project.progressPercentage}%</span>
+                    </div>
+                    <Progress value={project.progressPercentage} className="h-2" />
+                  </div>
+
+                  <div className="flex items-center justify-between text-sm text-muted-foreground">
+                    <span>Start: {new Date(project.startDate).toLocaleDateString()}</span>
+                    <span>Due: {new Date(project.expectedCompletionDate).toLocaleDateString()}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Urgent Tasks Section */}
       {urgentTasks.length > 0 && (
@@ -350,9 +490,9 @@ export default function EmployeeDashboard() {
                     )}
                   </div>
                   <Button size="sm" variant="default" asChild>
-                    <Link to={`/employee/${task.type === 'service' ? 'services' : 'projects'}/${task.id}`}>
+                    <Link to="/employee/tasks">
                       <PlayCircle className="mr-2 h-4 w-4" />
-                      Start
+                      Open Tasks
                     </Link>
                   </Button>
                 </div>
@@ -504,20 +644,22 @@ function WorkItemCard({ item }: { item: EmployeeWorkItem }) {
           )}
         </div>
 
-        <div className="flex items-center gap-4 text-sm text-muted-foreground">
-          <span>{item.vehicle}</span>
-          <span>•</span>
-          <span>{item.customer}</span>
-          {item.estimatedTime && (
-            <>
-              <span>•</span>
+        {item.vehicle || item.customer || item.estimatedTime ? (
+          <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+            {item.vehicle && <span>{item.vehicle}</span>}
+            {item.vehicle && item.customer && <span>•</span>}
+            {item.customer && <span>{item.customer}</span>}
+            {(item.vehicle || item.customer) && item.estimatedTime && <span>•</span>}
+            {item.estimatedTime && (
               <span className="flex items-center gap-1">
                 <Clock className="h-3 w-3" />
                 {item.estimatedTime}
               </span>
-            </>
-          )}
-        </div>
+            )}
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">No customer or vehicle info yet</p>
+        )}
 
         {item.progress !== undefined && item.type === 'project' && (
           <div className="space-y-1">
@@ -539,9 +681,7 @@ function WorkItemCard({ item }: { item: EmployeeWorkItem }) {
 
       <div className="flex items-center gap-2 ml-4">
         <Button size="sm" variant="outline" asChild>
-          <Link to={`/employee/${item.type === 'service' ? 'services' : 'projects'}/${item.id}`}>
-            View Details
-          </Link>
+          <Link to="/employee/tasks">Open Tasks</Link>
         </Button>
       </div>
     </div>

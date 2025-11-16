@@ -60,7 +60,10 @@ export const employeeApi = {
 
   // Get all work items (services + projects)
   getAllWorkItems: async (): Promise<EmployeeWorkItem[]> => {
+    console.log('[DEBUG] Fetching all work items from /employee/work-items');
     const response = await api.get<EmployeeWorkItem[]>('/employee/work-items');
+    console.log('[DEBUG] Received work items:', response.data);
+    console.log('[DEBUG] Total work items count:', response.data?.length || 0);
     return response.data;
   },
 

@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Users,
@@ -61,11 +61,65 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
-import { adminApi } from '@/lib/api/admin';
+import { api } from '@/lib/api/client';
 import { Employee, EmployeeStats, CreateEmployeeDto, UpdateEmployeeDto } from '@/types/admin';
+
+const EMPLOYEE_API_PATH = '/api/users?role=EMPLOYEE';
+
+type ApiEmployee = {
+  id: number;
+  userName: string;
+  firstName?: string | null;
+  lastName?: string | null;
+  email: string;
+  contactOne?: string | null;
+  contactTwo?: string | null;
+  address?: string | null;
+  role: 'EMPLOYEE' | 'ADMIN' | 'CUSTOMER';
+  enabled: boolean;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+};
+
+const mapApiEmployeeToEmployee = (apiEmployee: ApiEmployee): Employee => {
+  const createdAt = apiEmployee.createdAt ?? new Date().toISOString();
+  const updatedAt = apiEmployee.updatedAt ?? createdAt;
+  const hireDate = createdAt.split('T')[0] ?? createdAt;
+
+  return {
+    id: apiEmployee.id.toString(),
+    userName: apiEmployee.userName ?? 'Unnamed Employee',
+    email: apiEmployee.email ?? '',
+    contactOne: apiEmployee.contactOne ?? '',
+    contactTwo: apiEmployee.contactTwo ?? undefined,
+    address: apiEmployee.address ?? undefined,
+    role: apiEmployee.role,
+    status: apiEmployee.enabled ? 'active' : 'inactive',
+    specialization: undefined,
+    hireDate,
+    createdAt,
+    updatedAt,
+  };
+};
+
+const calculateEmployeeStats = (data: Employee[]): EmployeeStats => {
+  const totalEmployees = data.length;
+  const activeEmployees = data.filter((emp) => emp.status === 'active').length;
+  const onLeave = data.filter((emp) => emp.status === 'on_leave').length;
+  const averageWorkload = totalEmployees
+    ? Math.round((activeEmployees / totalEmployees) * 100)
+    : 0;
+
+  return {
+    totalEmployees,
+    activeEmployees,
+    onLeave,
+    averageWorkload,
+    overloadedEmployees: 0,
+  };
+};
 
 export default function AdminEmployees() {
   const { toast } = useToast();
@@ -88,30 +142,34 @@ export default function AdminEmployees() {
     specialization: '',
   });
 
-  const loadData = useCallback(async () => {
+  const loadData = async () => {
     try {
       setLoading(true);
-      const [employeesData, statsData] = await Promise.all([
-        adminApi.getAllEmployees(),
-        adminApi.getEmployeeStats(),
-      ]);
-      setEmployees(employeesData);
-      setStats(statsData);
+      
+      const apiEmployees = await api<ApiEmployee[]>(EMPLOYEE_API_PATH);
+      const mappedEmployees = apiEmployees.map(mapApiEmployeeToEmployee);
+
+      setEmployees(mappedEmployees);
+      setStats(calculateEmployeeStats(mappedEmployees));
     } catch (error) {
-      const err = error as { response?: { data?: { message?: string } } };
+      console.error('Failed to load employee data:', error);
       toast({
         title: 'Error',
-        description: err.response?.data?.message || 'Failed to load employee data',
+        description:
+          error instanceof Error
+            ? error.message
+            : 'Failed to load employee data',
         variant: 'destructive',
       });
     } finally {
       setLoading(false);
     }
-  }, [toast]);
+  };
 
   useEffect(() => {
     loadData();
-  }, [loadData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const filterEmployees = () => {
     let filtered = employees;
@@ -142,7 +200,29 @@ export default function AdminEmployees() {
     }
 
     try {
-      await adminApi.createEmployee(formData);
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Add new employee to mock data
+      const newEmployee: Employee = {
+        id: `${employees.length + 1}`,
+        userName: formData.userName,
+        email: formData.email,
+        contactOne: formData.contactOne,
+        contactTwo: formData.contactTwo || '',
+        address: formData.address || '',
+        hireDate: new Date().toISOString().split('T')[0],
+        specialization: formData.specialization || '',
+        status: 'active',
+        role: 'EMPLOYEE',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      
+      const updatedEmployees = [...employees, newEmployee];
+      setEmployees(updatedEmployees);
+      setStats(calculateEmployeeStats(updatedEmployees));
+      
       toast({
         title: 'Success',
         description: 'Employee created successfully',
@@ -157,12 +237,10 @@ export default function AdminEmployees() {
         address: '',
         specialization: '',
       });
-      loadData();
     } catch (error) {
-      const err = error as { response?: { data?: { message?: string } } };
       toast({
         title: 'Error',
-        description: err.response?.data?.message || 'Failed to create employee',
+        description: 'Failed to create employee',
         variant: 'destructive',
       });
     }
@@ -181,19 +259,29 @@ export default function AdminEmployees() {
     };
 
     try {
-      await adminApi.updateEmployee(selectedEmployee.id, updateData);
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Update employee in mock data
+      const updatedEmployees = employees.map(emp => 
+        emp.id === selectedEmployee.id 
+          ? { ...emp, ...updateData, updatedAt: new Date().toISOString() }
+          : emp
+      );
+
+      setEmployees(updatedEmployees);
+      setStats(calculateEmployeeStats(updatedEmployees));
+      
       toast({
         title: 'Success',
         description: 'Employee updated successfully',
       });
       setShowEditDialog(false);
       setSelectedEmployee(null);
-      loadData();
     } catch (error) {
-      const err = error as { response?: { data?: { message?: string } } };
       toast({
         title: 'Error',
-        description: err.response?.data?.message || 'Failed to update employee',
+        description: 'Failed to update employee',
         variant: 'destructive',
       });
     }
@@ -203,19 +291,24 @@ export default function AdminEmployees() {
     if (!selectedEmployee) return;
 
     try {
-      await adminApi.deleteEmployee(selectedEmployee.id);
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Remove employee from mock data
+      const updatedEmployees = employees.filter(emp => emp.id !== selectedEmployee.id);
+      setEmployees(updatedEmployees);
+      setStats(calculateEmployeeStats(updatedEmployees));
+      
       toast({
         title: 'Success',
         description: 'Employee deleted successfully',
       });
       setShowDeleteDialog(false);
       setSelectedEmployee(null);
-      loadData();
     } catch (error) {
-      const err = error as { response?: { data?: { message?: string } } };
       toast({
         title: 'Error',
-        description: err.response?.data?.message || 'Failed to delete employee',
+        description: 'Failed to delete employee',
         variant: 'destructive',
       });
     }
@@ -223,17 +316,27 @@ export default function AdminEmployees() {
 
   const handleStatusChange = async (employee: Employee, newStatus: 'active' | 'inactive' | 'on_leave') => {
     try {
-      await adminApi.updateEmployee(employee.id, { status: newStatus });
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Update employee status in mock data
+      const updatedEmployees = employees.map(emp => 
+        emp.id === employee.id 
+          ? { ...emp, status: newStatus, updatedAt: new Date().toISOString() }
+          : emp
+      );
+
+      setEmployees(updatedEmployees);
+      setStats(calculateEmployeeStats(updatedEmployees));
+      
       toast({
         title: 'Success',
         description: `Employee status updated to ${newStatus}`,
       });
-      loadData();
     } catch (error) {
-      const err = error as { response?: { data?: { message?: string } } };
       toast({
         title: 'Error',
-        description: err.response?.data?.message || 'Failed to update status',
+        description: 'Failed to update status',
         variant: 'destructive',
       });
     }

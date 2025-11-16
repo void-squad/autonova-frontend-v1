@@ -9,7 +9,6 @@ import DashboardLayout from "./components/layout/DashboardLayout";
 import CustomerSidebar from "./components/layout/CustomerSidebar";
 import EmployeeSidebar from "./components/layout/EmployeeSidebar";
 import AdminSidebar from "./components/layout/AdminSidebar";
-import { ProjectsStoreProvider } from "./contexts/ProjectsStore";
 import Help from "./pages/Help";
 
 // Public pages
@@ -20,12 +19,18 @@ import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import OAuth2Callback from './pages/OAuth2Callback';
 import NotFound from './pages/NotFound';
+import Chatbot_test from "./pages/Chatbot_test";
+import Chatbot from "./components/Chatbot";
+
+// Chatbot context
+import { ChatbotStatusProvider } from "./hooks/useChatbotStatus";
 
 // Customer pages
 import CustomerDashboard from "./pages/customer/CustomerDashboard";
-import BookAppointment from "./pages/customer/book-appointment";
-import MyAppointments from "./pages/customer/my-appointments";
+import BookAppointment from "./pages/customer/BookAppointment";
+import MyAppointments from "./pages/customer/MyAppointments";
 import CustomerProjectProgress from "./pages/customer/ProjectProgress";
+import ProgressMonitoringDashboard from "./pages/customer/ProgressMonitoring";
 import VehiclesPage from "./pages/customer/vehicles";
 import CustomerBilling from "./pages/customer/CustomerBilling";
 import Profile from "./pages/Profile";
@@ -33,7 +38,6 @@ import Profile from "./pages/Profile";
 // Employee pages
 import EmployeeDashboard from "./pages/employee/EmployeeDashboard";
 import EmployeeServices from "./pages/employee/services";
-import EmployeeProjects from "./pages/employee/projects";
 import EmployeeTasks from "./pages/employee/tasks";
 import EmployeeReports from "./pages/employee/reports";
 import TimeLoggingPage from "./pages/employee/TimeLoggingPage";
@@ -44,9 +48,11 @@ import EmployeeBilling from "./pages/employee/EmployeeBilling";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminEmployees from "./pages/admin/employees";
 import EmployeeDetail from "./pages/admin/employee-detail";
+import Notifications from "./pages/Notifications";
 import { TimeLoggingPage as AdminTimeLoggingPage } from "./pages/admin/TimeLoggingPage";
 import AdminBilling from "./pages/admin/AdminBilling";
-import { getAdminProjectRoutes } from "./pages/admin/projects";
+import { getAdminProjectRoutes } from "./pages/admin/adminProjectsRoutes";
+import ManageAppointments from "./pages/admin/ManageAppointments";
 
 const getSidebarForRole = (role?: string | null) => {
   const normalized = role?.toUpperCase();
@@ -77,16 +83,38 @@ const HelpRoute = () => {
   );
 };
 
+const NotificationsRoute = () => {
+  const { user } = useAuth();
+  const role = user?.role?.toUpperCase();
+
+  let sidebar: React.ReactNode | null = null;
+
+  if (role === "ADMIN") {
+    sidebar = <AdminSidebar />;
+  } else if (role === "EMPLOYEE") {
+    sidebar = <EmployeeSidebar />;
+  } else {
+    sidebar = <CustomerSidebar />;
+  }
+
+  return (
+    <DashboardLayout sidebar={sidebar}>
+      <Notifications />
+    </DashboardLayout>
+  );
+};
+import UserManagement from "./pages/admin/UserManagement";
+
 const queryClient = new QueryClient();
+const adminProjectRoutes = getAdminProjectRoutes();
 
 const App = () => {
-  const adminProjectRoutes = getAdminProjectRoutes();
 
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <ProjectsStoreProvider>
-          <TooltipProvider>
+          <ChatbotStatusProvider>
+            <TooltipProvider>
             <Toaster />
             <Sonner />
             <BrowserRouter>
@@ -98,7 +126,6 @@ const App = () => {
                 <Route path="/forgot-password" element={<ForgotPassword />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
                 <Route path="/oauth2/callback" element={<OAuth2Callback />} />
-
                 <Route
                   path="/profile"
                   element={
@@ -116,11 +143,21 @@ const App = () => {
                   }
                 />
 
+                <Route
+                  path="/notifications"
+                  element={
+                    <RequireAuth>
+                      <NotificationsRoute />
+                    </RequireAuth>
+                  }
+                />
+
                 {/* Test routes - Remove these in production */}
                 <Route path="/test/book-appointment" element={<BookAppointment />} />
                 <Route path="/test/appointments" element={<MyAppointments />} />
                 <Route path="/test/progress/:projectId" element={<CustomerProjectProgress />} />
                 <Route path="/test/employee/progress/:projectId" element={<EmployeeProjectProgress />} />
+                <Route path="/test/chatbot-test" element={<Chatbot_test />} />
 
                 {/* Customer routes */}
                 <Route
@@ -136,6 +173,7 @@ const App = () => {
                   <Route path="book-appointment" element={<BookAppointment />} />
                   <Route path="appointments" element={<MyAppointments />} />
                   <Route path="billing" element={<CustomerBilling />} />
+                  <Route path="progress-monitoring" element={<ProgressMonitoringDashboard />} />
                   <Route path="progress/:projectId" element={<CustomerProjectProgress />} />
                   <Route path="vehicles" element={<VehiclesPage />} />
                 </Route>
@@ -154,8 +192,6 @@ const App = () => {
                   <Route path="time-logging" element={<TimeLoggingPage />} />
                   <Route path="tasks" element={<EmployeeTasks />} />
                   <Route path="services" element={<EmployeeServices />} />
-                  <Route path="projects" element={<EmployeeProjects />} />
-                  <Route path="projects/:projectId/progress" element={<EmployeeProjectProgress />} />
                   <Route path="reports" element={<EmployeeReports />} />
                   <Route path="billing" element={<EmployeeBilling />} />
                 </Route>
@@ -171,12 +207,14 @@ const App = () => {
                 >
                   <Route index element={<Navigate to="/admin/dashboard" replace />} />
                   <Route path="dashboard" element={<AdminDashboard />} />
-              <Route path="employees" element={<AdminEmployees />} />
-              <Route path="employees/:id" element={<EmployeeDetail />} />
-                  <Route path="time-logging" element={<AdminTimeLoggingPage />} />
                   <Route path="employees" element={<AdminEmployees />} />
                   <Route path="employees/:id" element={<EmployeeDetail />} />
+                  <Route path="time-logging" element={<AdminTimeLoggingPage />} />
+                  <Route path="notifications" element={<Notifications />} />
                   <Route path="billing" element={<AdminBilling />} />
+                  {/* <Route path="billing" element={<AdminBilling />} /> */}
+                  <Route path="appointments" element={<ManageAppointments />} />
+                  <Route path="users" element={<UserManagement />} />
                 </Route>
                 {adminProjectRoutes.map((route) => (
                   <Route key={route.path} path={route.path} element={route.element} />
@@ -185,9 +223,13 @@ const App = () => {
                 {/* 404 */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
+
+              {/* Global Chatbot - provide paths to disable the floating button here */}
+              <Chatbot disabledPaths={["/login", "/register", "/admin", "/admin/*"]} />
+
             </BrowserRouter>
           </TooltipProvider>
-        </ProjectsStoreProvider>
+        </ChatbotStatusProvider>
       </AuthProvider>
     </QueryClientProvider>
   );

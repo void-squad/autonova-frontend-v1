@@ -4,6 +4,7 @@ export const CUSTOMER_ROUTES = {
   vehicles: '/customer/vehicles',
   appointments: '/customer/appointments',
   modifications: '/customer/modifications',
+  progressMonitoring: '/customer/progress-monitoring',
   progress: '/customer/progress',
   projectProgress: (projectId = ':projectId') => `/customer/progress/${projectId}`,
   reports: '/customer/reports',
@@ -14,7 +15,5 @@ export const EMPLOYEE_ROUTES = {
   billing: '/employee/billing',
   tasks: '/employee/tasks',
   timeLogs: '/employee/time-logs',
-  projects: '/employee/projects',
-  projectProgress: (projectId = ':projectId') => `/employee/projects/${projectId}/progress`,
   reports: '/employee/reports',
 } as const;
