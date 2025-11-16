@@ -7,6 +7,7 @@ import type {
   ProjectTask,
   TaskStatus,
 } from "@/types/project";
+import type { AdminAppointment } from "@/types/appointment";
 
 const resolveLocalProjectBase = () => {
   if (typeof window === "undefined") return undefined;
@@ -18,8 +19,21 @@ const resolveLocalProjectBase = () => {
   return `${proto}//${window.location.hostname}:${port}`;
 };
 
+const resolveLocalGatewayBase = () => {
+  if (typeof window === "undefined") return undefined;
+  const proto = window.location.protocol === "https:" ? "https:" : "http:";
+  const port =
+    import.meta.env.VITE_GATEWAY_API_PORT ?? import.meta.env.VITE_GATEWAY_PORT ?? "8080";
+  return `${proto}//${window.location.hostname}:${port}`;
+};
+
+// // Prefer hitting the API through the gateway during local/dev runs. Fall back to direct project
+// // service base URLs if explicitly provided.
+
 const projectApiBaseUrl =
+  sanitizeBaseUrl(import.meta.env.VITE_GATEWAY_API_BASE_URL) ??
   sanitizeBaseUrl(import.meta.env.VITE_PROJECT_API_BASE_URL) ??
+  sanitizeBaseUrl(resolveLocalGatewayBase()) ??
   sanitizeBaseUrl(resolveLocalProjectBase()) ??
   apiConfig.API_BASE_URL;
 
@@ -80,5 +94,26 @@ export const updateTaskStatus = async (taskId: string, status: TaskStatus, note?
   await projectApi(`/api/tasks/${taskId}/status`, {
     method: "PATCH",
     body: JSON.stringify({ status, note }),
+  });
+};
+
+export const listAdminAppointments = async (status?: string, from?: string, to?: string): Promise<AdminAppointment[]> => {
+  const query = toQuery({
+    status,
+    from,
+    to,
+  });
+  const suffix = query ? `?${query}` : "";
+  return projectApi<AdminAppointment[]>(`/api/admin/appointments${suffix}`);
+};
+
+export const getAdminAppointment = async (id: string): Promise<AdminAppointment> => {
+  return projectApi<AdminAppointment>(`/api/admin/appointments/${id}`);
+};
+
+export const updateAdminAppointmentStatus = async (id: string, status: string, adminNote?: string): Promise<void> => {
+  await projectApi(`/api/admin/appointments/${id}/status`, {
+    method: "PATCH",
+    body: JSON.stringify({ status, adminNote }),
   });
 };

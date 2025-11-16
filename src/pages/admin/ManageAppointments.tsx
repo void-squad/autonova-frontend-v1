@@ -17,24 +17,31 @@ export default function AppointmentManagement() {
     const fetchAppointments = async () => {
       try {
         setLoading(true);
-        const res = await fetch('/api/v1/appointments/all', {
+        const res = await fetch('http://localhost:8080/api/v1/appointments/all', {
           headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
         });
         if (!res.ok) throw new Error('Failed to fetch appointments');
         const data = await res.json();
 
-        const formatted = data.map(a => ({
-  id: a.id,
-  customer: a.customerUsername || 'Unknown Customer', // use username
-  // remove customerId entirely
-  vehicle: a.vehicleName || 'Unknown Vehicle', // show vehicle name
-  service: a.serviceType,
-  datetime: new Date(a.startTime).toLocaleString([], { 
-    hour: '2-digit', minute: '2-digit', year: 'numeric', month: 'short', day: 'numeric' 
-  }),
-  status: a.status.charAt(0).toUpperCase() + a.status.slice(1).toLowerCase(),
-  created: new Date(a.createdAt).toISOString().split('T')[0],
-}));
+        const formatted = data.map(a => {
+          const rawStatus = String(a.status).replace(/_/g, ' ');
+          const start = new Date(a.startTime);
+          const pad = (n: number) => String(n).padStart(2, '0');
+          const localDate = `${start.getFullYear()}-${pad(start.getMonth()+1)}-${pad(start.getDate())}`;
+          return ({
+            id: a.id,
+            customer: a.customerUsername || 'Unknown Customer',
+            vehicle: a.vehicleName || 'Unknown Vehicle',
+            service: a.serviceType,
+            datetime: new Date(a.startTime).toLocaleString([], {
+              hour: '2-digit', minute: '2-digit', year: 'numeric', month: 'short', day: 'numeric'
+            }),
+            // Local YYYY-MM-DD string for date filter input
+            date: localDate,
+            status: rawStatus.charAt(0).toUpperCase() + rawStatus.slice(1).toLowerCase(),
+            created: new Date(a.createdAt).toISOString().split('T')[0],
+          });
+        });
 
 
         setAppointments(formatted);
@@ -52,7 +59,7 @@ export default function AppointmentManagement() {
   useEffect(() => {
     const fetchEmployees = async () => {
       try {
-        const res = await fetch('/api/v1/employees', {
+        const res = await fetch('http://localhost:8080/api/v1/employees', {
           headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
         });
         if (!res.ok) throw new Error('Failed to fetch employees');
@@ -70,6 +77,7 @@ export default function AppointmentManagement() {
     const colors = {
       Pending: 'bg-yellow-100 text-yellow-800 border-yellow-300',
       Accepted: 'bg-green-100 text-green-800 border-green-300',
+      'In progress': 'bg-indigo-100 text-indigo-800 border-indigo-300',
       Completed: 'bg-blue-100 text-blue-800 border-blue-300',
       Rejected: 'bg-red-100 text-red-800 border-red-300',
       Cancelled: 'bg-gray-100 text-gray-800 border-gray-300',
@@ -82,7 +90,7 @@ export default function AppointmentManagement() {
     if (!confirm(`Are you sure you want to mark this as ${newStatus}?`)) return;
 
     try {
-      const res = await fetch(`/api/v1/appointments/${id}/status?status=${newStatus}`, {
+      const res = await fetch(`http://localhost:8080/api/v1/appointments/${id}/status?status=${newStatus}`, {
         method: 'PUT',
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
       });
@@ -113,6 +121,7 @@ export default function AppointmentManagement() {
     total: appointments.length,
     pending: appointments.filter(a => a.status === 'Pending').length,
     accepted: appointments.filter(a => a.status === 'Accepted').length,
+    inProgress: appointments.filter(a => a.status === 'In progress').length,
     completed: appointments.filter(a => a.status === 'Completed').length,
   };
 
@@ -148,7 +157,7 @@ export default function AppointmentManagement() {
         </div>
 
         {/* ✅ Stats Section */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
           <div className="bg-white border rounded-lg p-4">
             <div className="text-sm text-gray-600 mb-1">Total Appointments</div>
             <div className="text-3xl font-bold">{stats.total}</div>
@@ -160,6 +169,10 @@ export default function AppointmentManagement() {
           <div className="bg-green-50 border border-green-200 rounded-lg p-4">
             <div className="text-sm text-green-800 mb-1">Accepted</div>
             <div className="text-3xl font-bold text-green-900">{stats.accepted}</div>
+          </div>
+          <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4">
+            <div className="text-sm text-indigo-800 mb-1">In Progress</div>
+            <div className="text-3xl font-bold text-indigo-900">{stats.inProgress}</div>
           </div>
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
             <div className="text-sm text-blue-800 mb-1">Completed</div>
@@ -184,6 +197,7 @@ export default function AppointmentManagement() {
               <option value="all">All Status</option>
               <option value="pending">Pending</option>
               <option value="accepted">Accepted</option>
+              <option value="in progress">In Progress</option>
               <option value="completed">Completed</option>
               <option value="rejected">Rejected</option>
               <option value="cancelled">Cancelled</option>

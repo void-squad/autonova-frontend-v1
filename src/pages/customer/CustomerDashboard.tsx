@@ -17,10 +17,10 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEffect, useState } from 'react';
 import { getVehicleStats } from '@/services/authService';
-import { StatusBadge } from '@/components/projects/StatusBadge';
 import { useQuery } from '@tanstack/react-query';
 import { fetchCustomerProjects } from '@/services/projectService';
 import type { ProjectSummary } from '@/types/project';
+import { StatusBadge } from '@/components/projects/StatusBadge';
 import { format } from 'date-fns';
 
 export default function CustomerDashboard() {

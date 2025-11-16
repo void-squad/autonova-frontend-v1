@@ -4,6 +4,7 @@ export const CUSTOMER_ROUTES = {
   vehicles: '/customer/vehicles',
   appointments: '/customer/appointments',
   modifications: '/customer/modifications',
+  progressMonitoring: '/customer/progress-monitoring',
   progress: '/customer/progress',
   projectProgress: (projectId = ':projectId') => `/customer/progress/${projectId}`,
   reports: '/customer/reports',

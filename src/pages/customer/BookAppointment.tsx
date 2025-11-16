@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Calendar, Car, Clock, Wrench, ArrowLeft, Loader2, FileText } from 'lucide-react';
 import { api } from '@/lib/api/axios-config';
 import { Vehicle } from '@/types';
@@ -14,6 +15,7 @@ const mockVehicles = [
 const mockTimeSlots = ['09:00 AM', '10:00 AM', '11:00 AM', '01:00 PM', '02:00 PM', '03:00 PM', '04:00 PM'];
 
 export default function BookAppointment() {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [vehicles, setVehicles] = useState<Array<{ id: string; name: string }>>(mockVehicles);
   const [availableSlots, setAvailableSlots] = useState(mockTimeSlots);
@@ -142,6 +144,16 @@ export default function BookAppointment() {
 
     const data = await res.json();
     alert(`Appointment booked successfully! Status: ${data.status}`);
+    
+    // Reset form to empty state
+    setFormData({
+      vehicleId: '',
+      serviceType: '',
+      appointmentDate: '',
+      timeSlot: '',
+      notes: ''
+    });
+    setErrors({});
   } catch (err) {
     alert(`Error: ${err.message}`);
   } finally {
@@ -169,7 +181,10 @@ function convertTo24Hour(time12h) {
             </span>
             <span className="text-2xl font-bold">Autonova</span>
           </div>
-          <button className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-100 rounded-md">
+          <button 
+            onClick={() => navigate('/customer/dashboard')}
+            className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-100 rounded-md"
+          >
             <ArrowLeft className="h-4 w-4" />
             Back to Dashboard
           </button>
